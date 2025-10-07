@@ -1,0 +1,40 @@
+{
+    "columns": [
+        {
+            "id": "backlog",
+            "title": "Backlog",
+            "color": "#8b5cf6",
+            "order": 0
+        },
+        {
+            "id": "in-progress",
+            "title": "In Progress",
+            "color": "#3b82f6",
+            "order": 1,
+            "wip_limit": 3
+        },
+        {
+            "id": "review",
+            "title": "Review",
+            "color": "#f59e0b",
+            "order": 2,
+            "wip_limit": 2
+        },
+        {
+            "id": "done",
+            "title": "Done",
+            "color": "#10b981",
+            "order": 3
+        }
+    ],
+    "settings": {
+        "wip_limits": {
+            "in-progress": 3,
+            "review": 2
+        },
+        "dependency_rules": {
+            "enforce_predecessors": true,
+            "allow_parallel_work": false
+        }
+    }
+}

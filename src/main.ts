@@ -20,6 +20,8 @@ import { getParentWindow } from './dnd/util/getWindow';
 import { hasFrontmatterKey } from './helpers';
 import { t } from './lang/helpers';
 import { basicFrontmatter, frontmatterKey } from './parsers/common';
+import { SimpleKanbanView, simpleKanbanViewType, simpleKanbanIcon } from './SimpleKanbanView';
+import { EnhancedKanbanCommands } from './commands/EnhancedKanbanCommands';
 
 interface WindowRegistry {
   viewMap: Map<string, KanbanView>;
@@ -58,6 +60,9 @@ export default class KanbanPlugin extends Plugin {
   _loaded: boolean = false;
 
   isShiftPressed: boolean = false;
+
+  // Enhanced Kanban functionality
+  enhancedCommands: EnhancedKanbanCommands;
 
   async loadSettings() {
     this.settings = Object.assign({}, await this.loadData());
@@ -99,6 +104,7 @@ export default class KanbanPlugin extends Plugin {
     await this.loadSettings();
 
     this.MarkdownEditor = getEditorClass(this.app);
+    this.enhancedCommands = new EnhancedKanbanCommands(this.app);
 
     this.registerEditorSuggest(new TimeSuggest(this.app, this));
     this.registerEditorSuggest(new DateSuggest(this.app, this));
@@ -130,8 +136,10 @@ export default class KanbanPlugin extends Plugin {
     this.addSettingTab(this.settingsTab);
 
     this.registerView(kanbanViewType, (leaf) => new KanbanView(leaf, this));
+    this.registerView(simpleKanbanViewType, (leaf) => new SimpleKanbanView(leaf));
     this.registerMonkeyPatches();
     this.registerCommands();
+    this.registerEnhancedCommands();
     this.registerEvents();
 
     // Mount an empty component to start; views will be added as we go
@@ -146,6 +154,14 @@ export default class KanbanPlugin extends Plugin {
 
     this.addRibbonIcon(kanbanIcon, t('Create new board'), () => {
       this.newKanban();
+    });
+
+    this.addRibbonIcon(simpleKanbanIcon, 'Open Simple Kanban', () => {
+      const leaf = this.app.workspace.getLeaf('tab');
+      leaf.setViewState({
+        type: simpleKanbanViewType,
+        state: {}
+      });
     });
   }
 
@@ -719,6 +735,41 @@ export default class KanbanPlugin extends Plugin {
         if (checking) return true;
 
         view.getBoardSettings();
+      },
+    });
+  }
+
+  registerEnhancedCommands() {
+    this.addCommand({
+      id: 'create-enhanced-kanban-board',
+      name: 'Create new Enhanced Kanban board',
+      callback: () => this.enhancedCommands.createEnhancedKanbanBoard(),
+    });
+
+    this.addCommand({
+      id: 'convert-folder-to-enhanced-kanban',
+      name: 'Convert folder to Enhanced Kanban board',
+      checkCallback: (checking) => {
+        const activeFile = app.workspace.getActiveFile();
+        const isFolder = activeFile instanceof TFolder;
+
+        if (checking) return isFolder;
+        if (isFolder) {
+          this.enhancedCommands.convertFolderToEnhancedKanban(activeFile as TFolder);
+        }
+      },
+    });
+
+    this.addCommand({
+      id: 'open-simple-kanban-board',
+      name: 'Open Simple Kanban board',
+      callback: async () => {
+        // Simply open the simple kanban view - it will automatically find the board
+        const leaf = this.app.workspace.getLeaf('tab');
+        await leaf.setViewState({
+          type: simpleKanbanViewType,
+          state: {}
+        });
       },
     });
   }
