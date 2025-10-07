@@ -197,21 +197,33 @@ export class SimpleKanbanView extends ItemView {
           </div>
         </div>
         <div class="simple-kanban-swimlanes">
-          <div class="simple-kanban-swimlane">
-            <div class="swimlane-header">
-              <h3>Initiatives</h3>
-              <span class="swimlane-count">${this.initiatives.size}</span>
+          <div class="simple-kanban-swimlane" data-swimlane="initiatives">
+            <div class="swimlane-header" data-action="toggleSwimlane">
+              <div class="swimlane-title">
+                <span class="swimlane-icon">📋</span>
+                <h3>Initiatives</h3>
+                <span class="swimlane-count">${this.initiatives.size}</span>
+              </div>
+              <button class="swimlane-toggle" data-action="toggleSwimlane">
+                <span class="toggle-icon">▼</span>
+              </button>
             </div>
-            <div class="simple-kanban-board">
+            <div class="simple-kanban-board swimlane-content">
               ${columns.map((column: any) => this.renderInitiativeColumn(column)).join('')}
             </div>
           </div>
-          <div class="simple-kanban-swimlane">
-            <div class="swimlane-header">
-              <h3>Tasks</h3>
-              <span class="swimlane-count">${this.cards.size}</span>
+          <div class="simple-kanban-swimlane" data-swimlane="tasks">
+            <div class="swimlane-header" data-action="toggleSwimlane">
+              <div class="swimlane-title">
+                <span class="swimlane-icon">✅</span>
+                <h3>Tasks</h3>
+                <span class="swimlane-count">${this.cards.size}</span>
+              </div>
+              <button class="swimlane-toggle" data-action="toggleSwimlane">
+                <span class="toggle-icon">▼</span>
+              </button>
             </div>
-            <div class="simple-kanban-board">
+            <div class="simple-kanban-board swimlane-content">
               ${columns.map((column: any) => this.renderTaskColumn(column)).join('')}
             </div>
           </div>
@@ -318,6 +330,15 @@ export class SimpleKanbanView extends ItemView {
     if (createInitiativeBtn) {
       createInitiativeBtn.addEventListener('click', () => this.createInitiative());
     }
+
+    // Add listeners for swimlane toggles
+    const swimlaneHeaders = container.querySelectorAll('.swimlane-header[data-action="toggleSwimlane"]');
+    swimlaneHeaders.forEach(header => {
+      header.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleSwimlane(header);
+      });
+    });
 
     // Add listeners for column add buttons
     const addCardBtns = container.querySelectorAll('button[data-action="addCardToColumn"]');
@@ -519,6 +540,28 @@ ${result.description || 'Initiative description goes here...'}
     }
   }
 
+  private toggleSwimlane(header: Element) {
+    const swimlane = header.closest('.simple-kanban-swimlane');
+    if (!swimlane) return;
+
+    const content = swimlane.querySelector('.swimlane-content') as HTMLElement;
+    const toggleIcon = header.querySelector('.toggle-icon') as HTMLElement;
+    
+    if (content && toggleIcon) {
+      const isCollapsed = content.style.display === 'none';
+      
+      if (isCollapsed) {
+        content.style.display = 'flex';
+        toggleIcon.textContent = '▼';
+        swimlane.classList.remove('collapsed');
+      } else {
+        content.style.display = 'none';
+        toggleIcon.textContent = '▶';
+        swimlane.classList.add('collapsed');
+      }
+    }
+  }
+
   private async editCard(cardId: string) {
     const card = this.cards.get(cardId);
     if (card) {
@@ -669,8 +712,8 @@ ${result.description || 'Initiative description goes here...'}
 
   private async showCardModal(title: string, message: string, defaultStatus?: string): Promise<any> {
     return new Promise((resolve) => {
-      const modal = document.createElement('div');
-      modal.className = 'modal';
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
       
       const statusOptions = this.boardData?.columns.map((col: any) => 
         `<option value="${col.id}" ${col.id === defaultStatus ? 'selected' : ''}>${col.title}</option>`
@@ -680,54 +723,59 @@ ${result.description || 'Initiative description goes here...'}
         `<option value="${init.metadata.title}">${init.metadata.title}</option>`
       ).join('');
 
-      modal.innerHTML = `
-        <div class="modal-content enhanced-modal">
-          <h3>${title}</h3>
-          <p>${message}</p>
-          
-          <div class="form-group">
-            <label for="title-field">Title:</label>
-            <input type="text" id="title-field" placeholder="Enter task title...">
+      overlay.innerHTML = `
+        <div class="modal-panel">
+          <div class="modal-header">
+            <h3>${title}</h3>
+            <button class="modal-close" id="close-btn">×</button>
           </div>
-          
-          <div class="form-group">
-            <label for="status-field">Status:</label>
-            <select id="status-field">
-              ${statusOptions}
-            </select>
+          <div class="modal-body">
+            <p class="modal-description">${message}</p>
+            
+            <div class="form-group">
+              <label for="title-field">Title:</label>
+              <input type="text" id="title-field" placeholder="Enter task title...">
+            </div>
+            
+            <div class="form-group">
+              <label for="status-field">Status:</label>
+              <select id="status-field">
+                ${statusOptions}
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="initiative-field">Initiative (optional):</label>
+              <select id="initiative-field">
+                <option value="">No initiative</option>
+                ${initiativeOptions}
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="description-field">Description (optional):</label>
+              <textarea id="description-field" placeholder="Enter task description..."></textarea>
+            </div>
           </div>
-          
-          <div class="form-group">
-            <label for="initiative-field">Initiative (optional):</label>
-            <select id="initiative-field">
-              <option value="">No initiative</option>
-              ${initiativeOptions}
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label for="description-field">Description (optional):</label>
-            <textarea id="description-field" placeholder="Enter task description..."></textarea>
-          </div>
-          
-          <div class="modal-actions">
-            <button id="ok-btn">Create</button>
-            <button id="cancel-btn">Cancel</button>
+          <div class="modal-footer">
+            <button class="btn-secondary" id="cancel-btn">Cancel</button>
+            <button class="btn-primary" id="ok-btn">Create</button>
           </div>
         </div>
       `;
 
-      document.body.appendChild(modal);
+      document.body.appendChild(overlay);
 
-      const titleInput = modal.querySelector('#title-field') as HTMLInputElement;
-      const statusSelect = modal.querySelector('#status-field') as HTMLSelectElement;
-      const initiativeSelect = modal.querySelector('#initiative-field') as HTMLSelectElement;
-      const descriptionTextarea = modal.querySelector('#description-field') as HTMLTextAreaElement;
-      const okBtn = modal.querySelector('#ok-btn') as HTMLButtonElement;
-      const cancelBtn = modal.querySelector('#cancel-btn') as HTMLButtonElement;
+      const titleInput = overlay.querySelector('#title-field') as HTMLInputElement;
+      const statusSelect = overlay.querySelector('#status-field') as HTMLSelectElement;
+      const initiativeSelect = overlay.querySelector('#initiative-field') as HTMLSelectElement;
+      const descriptionTextarea = overlay.querySelector('#description-field') as HTMLTextAreaElement;
+      const okBtn = overlay.querySelector('#ok-btn') as HTMLButtonElement;
+      const cancelBtn = overlay.querySelector('#cancel-btn') as HTMLButtonElement;
+      const closeBtn = overlay.querySelector('#close-btn') as HTMLButtonElement;
 
       const cleanup = () => {
-        document.body.removeChild(modal);
+        document.body.removeChild(overlay);
       };
 
       const handleOk = () => {
@@ -748,6 +796,14 @@ ${result.description || 'Initiative description goes here...'}
 
       okBtn.addEventListener('click', handleOk);
       cancelBtn.addEventListener('click', handleCancel);
+      closeBtn.addEventListener('click', handleCancel);
+      
+      // Close on overlay click
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          handleCancel();
+        }
+      });
       
       // Focus the title input
       setTimeout(() => titleInput.focus(), 100);
@@ -756,52 +812,57 @@ ${result.description || 'Initiative description goes here...'}
 
   private async showInitiativeModal(title: string, message: string, defaultStatus?: string): Promise<any> {
     return new Promise((resolve) => {
-      const modal = document.createElement('div');
-      modal.className = 'modal';
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
       
       const statusOptions = this.boardData?.columns.map((col: any) => 
         `<option value="${col.id}" ${col.id === defaultStatus ? 'selected' : ''}>${col.title}</option>`
       ).join('') || '';
 
-      modal.innerHTML = `
-        <div class="modal-content enhanced-modal">
-          <h3>${title}</h3>
-          <p>${message}</p>
-          
-          <div class="form-group">
-            <label for="title-field">Title:</label>
-            <input type="text" id="title-field" placeholder="Enter initiative title...">
+      overlay.innerHTML = `
+        <div class="modal-panel">
+          <div class="modal-header">
+            <h3>${title}</h3>
+            <button class="modal-close" id="close-btn">×</button>
           </div>
-          
-          <div class="form-group">
-            <label for="status-field">Status:</label>
-            <select id="status-field">
-              ${statusOptions}
-            </select>
+          <div class="modal-body">
+            <p class="modal-description">${message}</p>
+            
+            <div class="form-group">
+              <label for="title-field">Title:</label>
+              <input type="text" id="title-field" placeholder="Enter initiative title...">
+            </div>
+            
+            <div class="form-group">
+              <label for="status-field">Status:</label>
+              <select id="status-field">
+                ${statusOptions}
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="description-field">Description (optional):</label>
+              <textarea id="description-field" placeholder="Enter initiative description..."></textarea>
+            </div>
           </div>
-          
-          <div class="form-group">
-            <label for="description-field">Description (optional):</label>
-            <textarea id="description-field" placeholder="Enter initiative description..."></textarea>
-          </div>
-          
-          <div class="modal-actions">
-            <button id="ok-btn">Create</button>
-            <button id="cancel-btn">Cancel</button>
+          <div class="modal-footer">
+            <button class="btn-secondary" id="cancel-btn">Cancel</button>
+            <button class="btn-primary" id="ok-btn">Create</button>
           </div>
         </div>
       `;
 
-      document.body.appendChild(modal);
+      document.body.appendChild(overlay);
 
-      const titleInput = modal.querySelector('#title-field') as HTMLInputElement;
-      const statusSelect = modal.querySelector('#status-field') as HTMLSelectElement;
-      const descriptionTextarea = modal.querySelector('#description-field') as HTMLTextAreaElement;
-      const okBtn = modal.querySelector('#ok-btn') as HTMLButtonElement;
-      const cancelBtn = modal.querySelector('#cancel-btn') as HTMLButtonElement;
+      const titleInput = overlay.querySelector('#title-field') as HTMLInputElement;
+      const statusSelect = overlay.querySelector('#status-field') as HTMLSelectElement;
+      const descriptionTextarea = overlay.querySelector('#description-field') as HTMLTextAreaElement;
+      const okBtn = overlay.querySelector('#ok-btn') as HTMLButtonElement;
+      const cancelBtn = overlay.querySelector('#cancel-btn') as HTMLButtonElement;
+      const closeBtn = overlay.querySelector('#close-btn') as HTMLButtonElement;
 
       const cleanup = () => {
-        document.body.removeChild(modal);
+        document.body.removeChild(overlay);
       };
 
       const handleOk = () => {
@@ -821,6 +882,14 @@ ${result.description || 'Initiative description goes here...'}
 
       okBtn.addEventListener('click', handleOk);
       cancelBtn.addEventListener('click', handleCancel);
+      closeBtn.addEventListener('click', handleCancel);
+      
+      // Close on overlay click
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          handleCancel();
+        }
+      });
       
       // Focus the title input
       setTimeout(() => titleInput.focus(), 100);
