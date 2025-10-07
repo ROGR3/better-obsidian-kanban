@@ -604,18 +604,24 @@
 
         input, select, textarea {
           width: 100%;
-          padding: 0.75rem;
           border: 1px solid var(--background-modifier-border);
           border-radius: 8px;
           background: var(--background-primary);
           color: var(--text-normal);
           font-size: 0.95rem;
           transition: all 0.2s ease;
+          z-index: 1;
+          position: relative;
 
           &:focus {
             outline: none;
             border-color: var(--interactive-accent);
             box-shadow: 0 0 0 3px hsla(var(--interactive-accent-hsl), 0.2);
+            background: var(--background-primary);
+          }
+
+          &:hover {
+            border-color: var(--interactive-accent-hover);
           }
         }
 

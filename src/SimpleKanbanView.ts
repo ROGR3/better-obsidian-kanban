@@ -76,7 +76,9 @@ export class SimpleKanbanView extends ItemView {
 
       // Load cards
       const cardsFolder = this.app.vault.getAbstractFileByPath(`${this.boardPath}/cards`);
+      this.cards.clear(); // Clear existing cards
       if (cardsFolder && cardsFolder.children) {
+        console.log('Loading cards, found', cardsFolder.children.length, 'files');
         for (const file of cardsFolder.children) {
           if (file instanceof TFile && file.extension === 'md') {
             const content = await this.app.vault.read(file);
@@ -90,10 +92,13 @@ export class SimpleKanbanView extends ItemView {
           }
         }
       }
+      console.log('Total cards loaded:', this.cards.size);
 
       // Load initiatives
       const initiativesFolder = this.app.vault.getAbstractFileByPath(`${this.boardPath}/initiatives`);
+      this.initiatives.clear(); // Clear existing initiatives
       if (initiativesFolder && initiativesFolder.children) {
+        console.log('Loading initiatives, found', initiativesFolder.children.length, 'files');
         for (const file of initiativesFolder.children) {
           if (file instanceof TFile && file.extension === 'md') {
             const content = await this.app.vault.read(file);
@@ -107,6 +112,7 @@ export class SimpleKanbanView extends ItemView {
           }
         }
       }
+      console.log('Total initiatives loaded:', this.initiatives.size);
     } catch (error) {
       console.error('Error loading board data:', error);
     }
@@ -583,14 +589,45 @@ ${result.description || 'Initiative description goes here...'}
   }
 
   private async deleteCard(cardId: string) {
+    console.log('Delete card called with ID:', cardId);
     const card = this.cards.get(cardId);
-    if (card && confirm('Are you sure you want to delete this card?')) {
-      try {
-        await this.app.vault.delete(card.path);
-        await this.loadBoardData();
-        this.renderBoard(this.containerEl.children[1]);
-      } catch (error) {
-        alert('Error deleting card: ' + error.message);
+    console.log('Card found:', card);
+    
+    if (card) {
+      const confirmed = await this.showConfirmModal(
+        'Delete Card',
+        `Are you sure you want to delete "${card.metadata.title}"?`,
+        'Delete',
+        'Cancel'
+      );
+      
+      console.log('User confirmed delete:', confirmed);
+      
+      if (confirmed) {
+        try {
+          console.log('Deleting card file:', card.path);
+          
+          // Try trash first (more reliable in Obsidian)
+          const file = this.app.vault.getAbstractFileByPath(card.path);
+          if (file) {
+            await this.app.vault.trash(file, false);
+            console.log('File moved to trash successfully');
+          } else {
+            console.error('File not found:', card.path);
+            this.showError(this.containerEl, 'File not found: ' + card.path);
+            return;
+          }
+          
+          console.log('Card deleted successfully, reloading board...');
+          await this.loadBoardData();
+          console.log('Board data reloaded, cards count:', this.cards.size);
+          console.log('Re-rendering board...');
+          this.renderBoard(this.containerEl);
+          console.log('Board re-rendered');
+        } catch (error) {
+          console.error('Error deleting card:', error);
+          this.showError(this.containerEl, 'Error deleting card: ' + error.message);
+        }
       }
     }
   }
@@ -623,13 +660,39 @@ ${result.description || 'Initiative description goes here...'}
 
   private async deleteInitiative(initiativeId: string) {
     const initiative = this.initiatives.get(initiativeId);
-    if (initiative && confirm('Are you sure you want to delete this initiative?')) {
-      try {
-        await this.app.vault.delete(initiative.path);
-        await this.loadBoardData();
-        this.renderBoard(this.containerEl.children[1]);
-      } catch (error) {
-        alert('Error deleting initiative: ' + error.message);
+    if (initiative) {
+      const confirmed = await this.showConfirmModal(
+        'Delete Initiative',
+        `Are you sure you want to delete "${initiative.metadata.title}"?`,
+        'Delete',
+        'Cancel'
+      );
+      
+      if (confirmed) {
+        try {
+          console.log('Deleting initiative file:', initiative.path);
+          
+          // Try trash first (more reliable in Obsidian)
+          const file = this.app.vault.getAbstractFileByPath(initiative.path);
+          if (file) {
+            await this.app.vault.trash(file, false);
+            console.log('Initiative file moved to trash successfully');
+          } else {
+            console.error('Initiative file not found:', initiative.path);
+            this.showError(this.containerEl, 'Initiative file not found: ' + initiative.path);
+            return;
+          }
+          
+          console.log('Initiative deleted successfully, reloading board...');
+          await this.loadBoardData();
+          console.log('Board data reloaded, initiatives count:', this.initiatives.size);
+          console.log('Re-rendering board...');
+          this.renderBoard(this.containerEl);
+          console.log('Board re-rendered');
+        } catch (error) {
+          console.error('Error deleting initiative:', error);
+          this.showError(this.containerEl, 'Error deleting initiative: ' + error.message);
+        }
       }
     }
   }
@@ -707,6 +770,59 @@ ${result.description || 'Initiative description goes here...'}
 
       // Focus the input
       setTimeout(() => input.focus(), 100);
+    });
+  }
+
+  private async showConfirmModal(title: string, message: string, confirmText: string = 'OK', cancelText: string = 'Cancel'): Promise<boolean> {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal-panel">
+          <div class="modal-header">
+            <h3>${title}</h3>
+            <button class="modal-close" id="close-btn">×</button>
+          </div>
+          <div class="modal-body">
+            <p class="modal-description">${message}</p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" id="cancel-btn">${cancelText}</button>
+            <button class="btn-primary" id="confirm-btn">${confirmText}</button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+
+      const confirmBtn = overlay.querySelector('#confirm-btn') as HTMLButtonElement;
+      const cancelBtn = overlay.querySelector('#cancel-btn') as HTMLButtonElement;
+      const closeBtn = overlay.querySelector('#close-btn') as HTMLButtonElement;
+
+      const cleanup = () => {
+        document.body.removeChild(overlay);
+      };
+
+      const handleConfirm = () => {
+        cleanup();
+        resolve(true);
+      };
+
+      const handleCancel = () => {
+        cleanup();
+        resolve(false);
+      };
+
+      confirmBtn.addEventListener('click', handleConfirm);
+      cancelBtn.addEventListener('click', handleCancel);
+      closeBtn.addEventListener('click', handleCancel);
+      
+      // Close on overlay click
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          handleCancel();
+        }
+      });
     });
   }
 
@@ -805,8 +921,17 @@ ${result.description || 'Initiative description goes here...'}
         }
       });
       
-      // Focus the title input
-      setTimeout(() => titleInput.focus(), 100);
+      // Focus the title input with better handling
+      setTimeout(() => {
+        titleInput.focus();
+        titleInput.select(); // Select all text for easy replacement
+      }, 150);
+
+      // Ensure input gets focus when clicked
+      titleInput.addEventListener('click', (e) => {
+        e.stopPropagation();
+        titleInput.focus();
+      });
     });
   }
 
@@ -891,8 +1016,17 @@ ${result.description || 'Initiative description goes here...'}
         }
       });
       
-      // Focus the title input
-      setTimeout(() => titleInput.focus(), 100);
+      // Focus the title input with better handling
+      setTimeout(() => {
+        titleInput.focus();
+        titleInput.select(); // Select all text for easy replacement
+      }, 150);
+
+      // Ensure input gets focus when clicked
+      titleInput.addEventListener('click', (e) => {
+        e.stopPropagation();
+        titleInput.focus();
+      });
     });
   }
 }
