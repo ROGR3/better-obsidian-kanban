@@ -201,7 +201,7 @@ if (polyfill && polyfill.default) {
 }
 
 const context = await esbuild.context({
-  entryPoints: ['./src/main.ts', './src/styles.less'],
+  entryPoints: ['./src/main.ts', './src/styles/simple-kanban.less'],
   bundle: true,
   define: {
     global: 'window',
