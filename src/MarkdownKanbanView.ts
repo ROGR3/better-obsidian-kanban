@@ -17,9 +17,18 @@ export class MarkdownKanbanView extends ItemView {
     this.app = this.app;
     this.boardManager = new BoardManager(this.app);
     this.dragDropHandler = new DragDropHandler(
-      (cardId, newColumnId) => this.boardManager.moveCardToColumn(cardId, newColumnId),
-      (initiativeId, newColumnId) => this.boardManager.moveInitiativeToColumn(initiativeId, newColumnId),
-      (draggedId, targetId, isBefore, itemType) => this.boardManager.reorderItem(draggedId, targetId, isBefore, itemType)
+      async (cardId, newColumnId) => {
+        await this.boardManager.moveCardToColumn(cardId, newColumnId);
+        this.refreshBoard();
+      },
+      async (initiativeId, newColumnId) => {
+        await this.boardManager.moveInitiativeToColumn(initiativeId, newColumnId);
+        this.refreshBoard();
+      },
+      async (draggedId, targetId, isBefore, itemType) => {
+        await this.boardManager.reorderItem(draggedId, targetId, isBefore, itemType);
+        this.refreshBoard();
+      }
     );
   }
 
@@ -103,6 +112,11 @@ export class MarkdownKanbanView extends ItemView {
     this.dragDropHandler.addDragAndDropListeners(container);
   }
 
+  private refreshBoard(): void {
+    const container = this.containerEl.children[1];
+    this.renderBoard(container);
+  }
+
   private addEventListeners(container: HTMLElement): void {
     // Add listeners for column add buttons
     container.querySelectorAll('[data-action="add-card"]').forEach(btn => {
@@ -111,7 +125,7 @@ export class MarkdownKanbanView extends ItemView {
         const columnId = (e.target as HTMLElement).dataset.columnId;
         if (columnId) {
           await this.boardManager.addCardToColumn(columnId);
-          this.renderBoard(container);
+          this.refreshBoard();
         }
       });
     });
@@ -122,7 +136,7 @@ export class MarkdownKanbanView extends ItemView {
         const columnId = (e.target as HTMLElement).dataset.columnId;
         if (columnId) {
           await this.boardManager.addInitiativeToColumn(columnId);
-          this.renderBoard(container);
+          this.refreshBoard();
         }
       });
     });
@@ -150,7 +164,7 @@ export class MarkdownKanbanView extends ItemView {
           } else if (type === 'initiative') {
             await this.boardManager.editInitiative(id);
           }
-          this.renderBoard(container);
+          this.refreshBoard();
         }
       });
     });
@@ -162,7 +176,7 @@ export class MarkdownKanbanView extends ItemView {
         const id = (e.target as HTMLElement).dataset.id;
         if (id) {
           await this.boardManager.editCard(id);
-          this.renderBoard(container);
+          this.refreshBoard();
         }
       });
     });
@@ -173,7 +187,7 @@ export class MarkdownKanbanView extends ItemView {
         const id = (e.target as HTMLElement).dataset.id;
         if (id) {
           await this.boardManager.editInitiative(id);
-          this.renderBoard(container);
+          this.refreshBoard();
         }
       });
     });
@@ -185,7 +199,7 @@ export class MarkdownKanbanView extends ItemView {
         const id = (e.target as HTMLElement).dataset.id;
         if (id) {
           await this.boardManager.deleteCard(id);
-          this.renderBoard(container);
+          this.refreshBoard();
         }
       });
     });
@@ -196,7 +210,7 @@ export class MarkdownKanbanView extends ItemView {
         const id = (e.target as HTMLElement).dataset.id;
         if (id) {
           await this.boardManager.deleteInitiative(id);
-          this.renderBoard(container);
+          this.refreshBoard();
         }
       });
     });
