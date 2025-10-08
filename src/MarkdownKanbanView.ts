@@ -11,6 +11,7 @@ export class MarkdownKanbanView extends ItemView {
   private containerEl: HTMLElement;
   private boardManager: BoardManager;
   private dragDropHandler: DragDropHandler;
+  private contextMenu: HTMLElement | null = null;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
@@ -118,25 +119,12 @@ export class MarkdownKanbanView extends ItemView {
   }
 
   private addEventListeners(container: HTMLElement): void {
-    // Add listeners for column add buttons
-    container.querySelectorAll('[data-action="add-card"]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const columnId = (e.target as HTMLElement).dataset.columnId;
+    // Add listeners for column right-click context menus
+    container.querySelectorAll('.simple-kanban-column').forEach(column => {
+      column.addEventListener('contextmenu', (e) => {
+        const columnId = (e.currentTarget as HTMLElement).dataset.columnId;
         if (columnId) {
-          await this.boardManager.addCardToColumn(columnId);
-          this.refreshBoard();
-        }
-      });
-    });
-
-    container.querySelectorAll('[data-action="add-initiative"]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const columnId = (e.target as HTMLElement).dataset.columnId;
-        if (columnId) {
-          await this.boardManager.addInitiativeToColumn(columnId);
-          this.refreshBoard();
+          this.showContextMenu(e as MouseEvent, 'column', undefined, columnId);
         }
       });
     });
@@ -148,11 +136,10 @@ export class MarkdownKanbanView extends ItemView {
         this.toggleSwimlane(header as HTMLElement);
       });
     });
-
   }
 
   private addClickListeners(container: HTMLElement): void {
-    // Add click listeners for cards and initiatives
+    // Add click listeners for cards and initiatives (left click to edit)
     container.querySelectorAll('.clickable-card, .clickable-initiative').forEach(element => {
       element.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -168,29 +155,15 @@ export class MarkdownKanbanView extends ItemView {
           this.refreshBoard();
         }
       });
-    });
 
-
-
-    // Add listeners for delete buttons
-    container.querySelectorAll('[data-action="delete-card"]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
+      // Add right-click context menu listeners
+      element.addEventListener('contextmenu', (e) => {
         e.stopPropagation();
-        const id = (e.target as HTMLElement).dataset.id;
-        if (id) {
-          await this.boardManager.deleteCard(id);
-          this.refreshBoard();
-        }
-      });
-    });
-
-    container.querySelectorAll('[data-action="delete-initiative"]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const id = (e.target as HTMLElement).dataset.id;
-        if (id) {
-          await this.boardManager.deleteInitiative(id);
-          this.refreshBoard();
+        const id = (e.currentTarget as HTMLElement).dataset.id;
+        const type = (e.currentTarget as HTMLElement).dataset.type;
+        
+        if (id && type) {
+          this.showContextMenu(e as MouseEvent, type as 'card' | 'initiative', id);
         }
       });
     });
@@ -208,6 +181,185 @@ export class MarkdownKanbanView extends ItemView {
     const isCollapsed = content.style.display === 'none';
     content.style.display = isCollapsed ? 'block' : 'none';
     toggleButton.textContent = isCollapsed ? '▼' : '▶';
+  }
+
+  private createContextMenu(): HTMLElement {
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.style.display = 'block';
+    menu.style.visibility = 'visible';
+    menu.style.opacity = '1';
+    menu.style.position = 'fixed';
+    menu.style.zIndex = '999999';
+    
+    // Try appending to the view container first, fallback to document.body
+    const viewContainer = this.containerEl.closest('.view-content') || document.body;
+    viewContainer.appendChild(menu);
+    return menu;
+  }
+
+  private showContextMenu(event: MouseEvent, type: 'card' | 'initiative' | 'column', id?: string, columnId?: string): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Hide existing context menu
+    this.hideContextMenu();
+
+    // Create new context menu
+    this.contextMenu = this.createContextMenu();
+    
+    let menuItems = '';
+    
+    if (type === 'card' && id) {
+      const card = this.boardManager.getCards().get(id);
+      const isDoneColumn = card && this.normalizeStatus(card.metadata.status) === 'done';
+      
+      menuItems = `
+        <div class="context-menu-item" data-action="edit-card" data-id="${id}">
+          <span class="context-menu-icon">✏️</span>
+          Edit Card
+        </div>
+        ${isDoneColumn ? `
+        <div class="context-menu-item" data-action="archive-card" data-id="${id}">
+          <span class="context-menu-icon">📦</span>
+          Archive Card
+        </div>
+        ` : ''}
+        <div class="context-menu-item danger" data-action="delete-card" data-id="${id}">
+          <span class="context-menu-icon">🗑️</span>
+          Delete Card
+        </div>
+      `;
+    } else if (type === 'initiative' && id) {
+      const initiative = this.boardManager.getInitiatives().get(id);
+      const isDoneColumn = initiative && this.normalizeStatus(initiative.metadata.status) === 'done';
+      
+      menuItems = `
+        <div class="context-menu-item" data-action="edit-initiative" data-id="${id}">
+          <span class="context-menu-icon">✏️</span>
+          Edit Initiative
+        </div>
+        ${isDoneColumn ? `
+        <div class="context-menu-item" data-action="archive-initiative" data-id="${id}">
+          <span class="context-menu-icon">📦</span>
+          Archive Initiative
+        </div>
+        ` : ''}
+        <div class="context-menu-item danger" data-action="delete-initiative" data-id="${id}">
+          <span class="context-menu-icon">🗑️</span>
+          Delete Initiative
+        </div>
+      `;
+    } else if (type === 'column' && columnId) {
+      // Determine which swimlane this column belongs to by checking the event target
+      const targetElement = event.target as HTMLElement;
+      const initiativeSwimlane = targetElement.closest('[data-swimlane="initiatives"]');
+      
+      if (initiativeSwimlane) {
+        menuItems = `
+          <div class="context-menu-item" data-action="add-initiative" data-column-id="${columnId}">
+            <span class="context-menu-icon">📋</span>
+            Add Initiative
+          </div>
+        `;
+      } else {
+        menuItems = `
+          <div class="context-menu-item" data-action="add-card" data-column-id="${columnId}">
+            <span class="context-menu-icon">➕</span>
+            Add Card
+          </div>
+        `;
+      }
+    }
+
+    this.contextMenu.innerHTML = menuItems;
+    this.contextMenu.style.left = `${event.pageX}px`;
+    this.contextMenu.style.top = `${event.pageY}px`;
+    this.contextMenu.style.display = 'block';
+    this.contextMenu.style.visibility = 'visible';
+    this.contextMenu.style.opacity = '1';
+
+    // Add event listeners
+    this.contextMenu.querySelectorAll('.context-menu-item').forEach(item => {
+      item.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const action = (e.currentTarget as HTMLElement).dataset.action;
+        const itemId = (e.currentTarget as HTMLElement).dataset.id;
+        const itemColumnId = (e.currentTarget as HTMLElement).dataset.columnId;
+
+        await this.handleContextAction(action, itemId, itemColumnId);
+        this.hideContextMenu();
+      });
+    });
+
+    // Hide menu when clicking outside
+    setTimeout(() => {
+      document.addEventListener('click', this.hideContextMenu.bind(this), { once: true });
+    }, 0);
+  }
+
+  private hideContextMenu(): void {
+    if (this.contextMenu) {
+      this.contextMenu.remove();
+      this.contextMenu = null;
+    }
+  }
+
+  private async handleContextAction(action: string, id?: string, columnId?: string): Promise<void> {
+    switch (action) {
+      case 'edit-card':
+        if (id) {
+          await this.boardManager.editCard(id);
+          this.refreshBoard();
+        }
+        break;
+      case 'edit-initiative':
+        if (id) {
+          await this.boardManager.editInitiative(id);
+          this.refreshBoard();
+        }
+        break;
+      case 'delete-card':
+        if (id) {
+          await this.boardManager.deleteCard(id);
+          this.refreshBoard();
+        }
+        break;
+      case 'delete-initiative':
+        if (id) {
+          await this.boardManager.deleteInitiative(id);
+          this.refreshBoard();
+        }
+        break;
+      case 'archive-card':
+        if (id) {
+          await this.boardManager.archiveCard(id);
+          this.refreshBoard();
+        }
+        break;
+      case 'archive-initiative':
+        if (id) {
+          await this.boardManager.archiveInitiative(id);
+          this.refreshBoard();
+        }
+        break;
+      case 'add-card':
+        if (columnId) {
+          await this.boardManager.addCardToColumn(columnId);
+          this.refreshBoard();
+        }
+        break;
+      case 'add-initiative':
+        if (columnId) {
+          await this.boardManager.addInitiativeToColumn(columnId);
+          this.refreshBoard();
+        }
+        break;
+    }
+  }
+
+  private normalizeStatus(status: string): string {
+    return status.toLowerCase().replace(/\s+/g, '-');
   }
 
 }

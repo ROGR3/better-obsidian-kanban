@@ -57,7 +57,8 @@ export class BoardManager {
                 predecessors: item.predecessors || [],
                 successors: item.successors || [],
                 date: item.date,
-                tags: item.tags || []
+                tags: item.tags || [],
+                archived: item.archived || false
               }
             });
           } else if (item.type === 'initiative') {
@@ -69,7 +70,8 @@ export class BoardManager {
                 status: item.status,
                 description: item.description || '',
                 date: item.date,
-                tags: item.tags || []
+                tags: item.tags || [],
+                archived: item.archived || false
               }
             });
           }
@@ -200,7 +202,8 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
         predecessors: predecessors,
         successors: successors,
         date: new Date().toISOString().split('T')[0],
-        tags: cardData.tags
+        tags: cardData.tags,
+        archived: false
       }
     };
 
@@ -225,7 +228,8 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
         status: columnId,
         description: initiativeData.description,
         date: new Date().toISOString().split('T')[0],
-        tags: initiativeData.tags
+        tags: initiativeData.tags,
+        archived: false
       }
     };
 
@@ -349,6 +353,38 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
     if (!confirmed) return;
 
     this.initiatives.delete(initiativeId);
+    await this.saveBoardToFile();
+  }
+
+  async archiveCard(cardId: string): Promise<void> {
+    const card = this.cards.get(cardId);
+    if (!card) return;
+
+    card.metadata.archived = true;
+    await this.saveBoardToFile();
+  }
+
+  async unarchiveCard(cardId: string): Promise<void> {
+    const card = this.cards.get(cardId);
+    if (!card) return;
+
+    card.metadata.archived = false;
+    await this.saveBoardToFile();
+  }
+
+  async archiveInitiative(initiativeId: string): Promise<void> {
+    const initiative = this.initiatives.get(initiativeId);
+    if (!initiative) return;
+
+    initiative.metadata.archived = true;
+    await this.saveBoardToFile();
+  }
+
+  async unarchiveInitiative(initiativeId: string): Promise<void> {
+    const initiative = this.initiatives.get(initiativeId);
+    if (!initiative) return;
+
+    initiative.metadata.archived = false;
     await this.saveBoardToFile();
   }
 

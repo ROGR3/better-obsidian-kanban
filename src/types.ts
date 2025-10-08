@@ -38,6 +38,7 @@ export interface CardMetadata {
   successors: string[];
   date: string;
   tags: string[];
+  archived: boolean;
 }
 
 export interface InitiativeMetadata {
@@ -46,6 +47,7 @@ export interface InitiativeMetadata {
   description: string;
   date: string;
   tags: string[];
+  archived: boolean;
 }
 
 export interface Card {

@@ -84,12 +84,7 @@ export class BoardRenderer {
           <!-- Content will be filled by specific column renderers -->
         </div>
         <div class="simple-kanban-column-footer">
-          <button class="add-card-btn" data-action="add-card" data-column-id="${column.id}">
-            + Add Card
-          </button>
-          <button class="add-initiative-btn" data-action="add-initiative" data-column-id="${column.id}">
-            + Add Initiative
-          </button>
+          <div class="column-footer-hint">Right-click to add items</div>
         </div>
       </div>
     `;
@@ -97,7 +92,7 @@ export class BoardRenderer {
 
   private static renderInitiativeColumn(column: BoardColumn, initiatives: Map<string, Initiative>): string {
     const initiativesInColumn = Array.from(initiatives.values())
-      .filter(initiative => this.normalizeStatus(initiative.metadata.status) === column.id);
+      .filter(initiative => this.normalizeStatus(initiative.metadata.status) === column.id && !initiative.metadata.archived);
 
     console.log(`Rendering initiative column ${column.id} with ${initiativesInColumn.length} initiatives`);
 
@@ -115,9 +110,7 @@ export class BoardRenderer {
           ${initiativesHtml}
         </div>
         <div class="simple-kanban-column-footer">
-          <button class="add-initiative-btn" data-action="add-initiative" data-column-id="${column.id}">
-            + Add Initiative
-          </button>
+          <div class="column-footer-hint">Right-click to add items</div>
         </div>
       </div>
     `;
@@ -125,7 +118,7 @@ export class BoardRenderer {
 
   private static renderTaskColumn(column: BoardColumn, cards: Map<string, Card>): string {
     const cardsInColumn = Array.from(cards.values())
-      .filter(card => this.normalizeStatus(card.metadata.status) === column.id);
+      .filter(card => this.normalizeStatus(card.metadata.status) === column.id && !card.metadata.archived);
 
     console.log(`Rendering task column ${column.id} with ${cardsInColumn.length} cards`);
 
@@ -143,9 +136,7 @@ export class BoardRenderer {
           ${cardsHtml}
         </div>
         <div class="simple-kanban-column-footer">
-          <button class="add-card-btn" data-action="add-card" data-column-id="${column.id}">
-            + Add Card
-          </button>
+          <div class="column-footer-hint">Right-click to add items</div>
         </div>
       </div>
     `;
@@ -155,6 +146,11 @@ export class BoardRenderer {
     const description = initiative.metadata.description ? 
       `<div class="initiative-description">${initiative.metadata.description}</div>` : '';
     
+    // Add archive button for initiatives in "done" column
+    const isDoneColumn = this.normalizeStatus(initiative.metadata.status) === 'done';
+    const archiveButton = isDoneColumn ? 
+      `<button class="archive-btn" data-action="archive-initiative" data-id="${initiative.id}">📦</button>` : '';
+
     return `
       <div class="simple-kanban-initiative clickable-initiative" 
            data-id="${initiative.id}" 
@@ -162,9 +158,6 @@ export class BoardRenderer {
            draggable="true">
         <div class="initiative-header">
           <h4>${initiative.metadata.title}</h4>
-          <div class="initiative-actions">
-            <button class="delete-btn" data-action="delete-initiative" data-id="${initiative.id}">🗑️</button>
-          </div>
         </div>
         ${description}
         <div class="initiative-meta">
@@ -204,6 +197,11 @@ export class BoardRenderer {
       relationshipInfo += `<div class="card-relationship successors">➡️ Blocks: ${succTitles}</div>`;
     }
 
+    // Add archive button for cards in "done" column
+    const isDoneColumn = this.normalizeStatus(card.metadata.status) === 'done';
+    const archiveButton = isDoneColumn ? 
+      `<button class="archive-btn" data-action="archive-card" data-id="${card.id}">📦</button>` : '';
+
     return `
       <div class="simple-kanban-card clickable-card" 
            data-id="${card.id}" 
@@ -211,9 +209,6 @@ export class BoardRenderer {
            draggable="true">
         <div class="card-header">
           <h4>${card.metadata.title}</h4>
-          <div class="card-actions">
-            <button class="delete-btn" data-action="delete-card" data-id="${card.id}">🗑️</button>
-          </div>
         </div>
         ${initiative}
         ${description}
