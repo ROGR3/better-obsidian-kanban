@@ -3,122 +3,126 @@ import { Card, Initiative } from './types';
 export class DragDropHandler {
   private onMoveCard: (cardId: string, newColumnId: string) => Promise<void>;
   private onMoveInitiative: (initiativeId: string, newColumnId: string) => Promise<void>;
-  private onReorderItem: (draggedId: string, targetId: string, isBefore: boolean, itemType: 'card' | 'initiative') => Promise<void>;
+  private onDragEnd: () => void;
+  private draggedElement: HTMLElement | null = null;
+  private dragOverColumn: HTMLElement | null = null;
 
   constructor(
     onMoveCard: (cardId: string, newColumnId: string) => Promise<void>,
     onMoveInitiative: (initiativeId: string, newColumnId: string) => Promise<void>,
-    onReorderItem: (draggedId: string, targetId: string, isBefore: boolean, itemType: 'card' | 'initiative') => Promise<void>
+    onDragEnd: () => void
   ) {
     this.onMoveCard = onMoveCard;
     this.onMoveInitiative = onMoveInitiative;
-    this.onReorderItem = onReorderItem;
+    this.onDragEnd = onDragEnd;
   }
 
   addDragAndDropListeners(container: HTMLElement): void {
-    let draggedItem: HTMLElement | null = null;
+    // Use event delegation for better performance
+    container.addEventListener('dragstart', this.handleDragStart.bind(this));
+    container.addEventListener('dragend', this.handleDragEnd.bind(this));
+    container.addEventListener('dragover', this.handleDragOver.bind(this));
+    container.addEventListener('dragleave', this.handleDragLeave.bind(this));
+    container.addEventListener('drop', this.handleDrop.bind(this));
+  }
 
-    // Drag start
-    container.addEventListener('dragstart', (e) => {
-      const target = e.target as HTMLElement;
-      if (target.draggable) {
-        draggedItem = target;
-        target.style.opacity = '0.5';
-        console.log('Started dragging:', target.dataset.type, target.dataset.id);
-      }
-    });
+  private handleDragStart(e: DragEvent): void {
+    const target = e.target as HTMLElement;
+    if (!target.classList.contains('draggable-item')) return;
 
-    // Drag end
-    container.addEventListener('dragend', (e) => {
-      const target = e.target as HTMLElement;
-      if (target.draggable) {
-        target.style.opacity = '1';
-        draggedItem = null;
-        
-        // Remove all drag-over classes
-        container.querySelectorAll('.drag-over-before, .drag-over-after').forEach(el => {
-          el.classList.remove('drag-over-before', 'drag-over-after');
-        });
-      }
-    });
+    this.draggedElement = target;
+    target.classList.add('dragging');
+    
+    // Set drag data
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', target.dataset.id || '');
+      e.dataTransfer.setData('item-type', target.dataset.type || '');
+    }
+  }
 
-    // Drag over
-    container.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      
-      const target = e.target as HTMLElement;
-      const column = target.closest('.simple-kanban-column') as HTMLElement;
-      const card = target.closest('.simple-kanban-card, .simple-kanban-initiative') as HTMLElement;
-      
-      if (column && draggedItem) {
-        // Remove previous drag-over classes
-        container.querySelectorAll('.drag-over-before, .drag-over-after').forEach(el => {
-          el.classList.remove('drag-over-before', 'drag-over-after');
-        });
-        
-        if (card && card !== draggedItem) {
-          // Determine if we're before or after the target card
-          const rect = card.getBoundingClientRect();
-          const midY = rect.top + rect.height / 2;
-          
-          if (e.clientY < midY) {
-            card.classList.add('drag-over-before');
-          } else {
-            card.classList.add('drag-over-after');
-          }
-        }
-      }
-    });
+  private handleDragEnd(e: DragEvent): void {
+    const target = e.target as HTMLElement;
+    if (!target.classList.contains('draggable-item')) return;
 
-    // Drag leave
-    container.addEventListener('dragleave', (e) => {
-      const target = e.target as HTMLElement;
-      const card = target.closest('.simple-kanban-card, .simple-kanban-initiative') as HTMLElement;
-      
-      if (card) {
-        card.classList.remove('drag-over-before', 'drag-over-after');
-      }
-    });
+    // Clean up drag state
+    target.classList.remove('dragging');
+    this.clearDragOverStates();
+    this.draggedElement = null;
+    this.dragOverColumn = null;
+    
+    // Refresh board
+    this.onDragEnd();
+  }
 
-    // Drop
-    container.addEventListener('drop', async (e) => {
-      e.preventDefault();
-      
-      const target = e.target as HTMLElement;
-      const column = target.closest('.simple-kanban-column') as HTMLElement;
-      const card = target.closest('.simple-kanban-card, .simple-kanban-initiative') as HTMLElement;
-      
-      if (!draggedItem || !column) return;
-      
-      const draggedId = draggedItem.dataset.id;
-      const draggedType = draggedItem.dataset.type as 'card' | 'initiative';
-      const columnId = column.dataset.columnId;
-      
-      console.log('Drop event triggered');
-      console.log('Target column:', column);
-      console.log('Dragged item ID:', draggedId);
-      console.log('Dragged item type:', draggedType);
-      console.log('Column ID:', columnId);
-      
-      if (card && card !== draggedItem) {
-        // Reordering within the same column or different column
-        const targetId = card.dataset.id;
-        const isBefore = card.classList.contains('drag-over-before');
-        
-        await this.onReorderItem(draggedId, targetId, isBefore, draggedType);
-      } else if (columnId) {
-        // Moving to a different column
-        if (draggedType === 'card') {
-          await this.onMoveCard(draggedId, columnId);
-        } else if (draggedType === 'initiative') {
-          await this.onMoveInitiative(draggedId, columnId);
-        }
+  private handleDragOver(e: DragEvent): void {
+    e.preventDefault();
+    
+    const target = e.target as HTMLElement;
+    const column = target.closest('.simple-kanban-column') as HTMLElement;
+    
+    if (!column) return;
+
+    // Update drag over state
+    if (this.dragOverColumn !== column) {
+      this.clearDragOverStates();
+      this.dragOverColumn = column;
+      column.classList.add('drag-over');
+    }
+
+    // Set drop effect
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move';
+    }
+  }
+
+  private handleDragLeave(e: DragEvent): void {
+    const target = e.target as HTMLElement;
+    const column = target.closest('.simple-kanban-column') as HTMLElement;
+    
+    if (column && !column.contains(e.relatedTarget as Node)) {
+      column.classList.remove('drag-over');
+      if (this.dragOverColumn === column) {
+        this.dragOverColumn = null;
       }
-      
-      // Clean up
-      container.querySelectorAll('.drag-over-before, .drag-over-after').forEach(el => {
-        el.classList.remove('drag-over-before', 'drag-over-after');
+    }
+  }
+
+  private async handleDrop(e: DragEvent): Promise<void> {
+    e.preventDefault();
+    
+    const target = e.target as HTMLElement;
+    const column = target.closest('.simple-kanban-column') as HTMLElement;
+    
+    if (!column || !this.draggedElement) return;
+    
+    const draggedId = e.dataTransfer?.getData('text/plain');
+    const itemType = e.dataTransfer?.getData('item-type') as 'card' | 'initiative';
+    const columnId = column.dataset.columnId;
+    
+    if (!draggedId || !itemType || !columnId) return;
+    
+    // Clean up drag states
+    this.clearDragOverStates();
+    
+    // Move the item
+    try {
+      if (itemType === 'card') {
+        await this.onMoveCard(draggedId, columnId);
+      } else if (itemType === 'initiative') {
+        await this.onMoveInitiative(draggedId, columnId);
+      }
+    } catch (error) {
+      console.error('Error moving item:', error);
+    }
+  }
+
+  private clearDragOverStates(): void {
+    const container = this.draggedElement?.closest('.simple-kanban');
+    if (container) {
+      container.querySelectorAll('.drag-over').forEach(el => {
+        el.classList.remove('drag-over');
       });
-    });
+    }
   }
 }

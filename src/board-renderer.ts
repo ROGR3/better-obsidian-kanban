@@ -19,14 +19,8 @@ export class BoardRenderer {
       return;
     }
 
-    console.log('Rendering board with columns:', boardData.columns);
-    console.log('Cards:', cards.size);
-    console.log('Initiatives:', initiatives.size);
 
-    const columnsHtml = boardData.columns
-      .sort((a, b) => a.order - b.order)
-      .map(column => this.renderColumn(column, cards, initiatives))
-      .join('');
+    // Columns are rendered within each swimlane
 
     container.innerHTML = `
       <div class="simple-kanban">
@@ -94,7 +88,6 @@ export class BoardRenderer {
     const initiativesInColumn = Array.from(initiatives.values())
       .filter(initiative => this.normalizeStatus(initiative.metadata.status) === column.id && !initiative.metadata.archived);
 
-    console.log(`Rendering initiative column ${column.id} with ${initiativesInColumn.length} initiatives`);
 
     const initiativesHtml = initiativesInColumn
       .map(initiative => this.renderInitiative(initiative))
@@ -120,7 +113,6 @@ export class BoardRenderer {
     const cardsInColumn = Array.from(cards.values())
       .filter(card => this.normalizeStatus(card.metadata.status) === column.id && !card.metadata.archived);
 
-    console.log(`Rendering task column ${column.id} with ${cardsInColumn.length} cards`);
 
     const cardsHtml = cardsInColumn
       .map(card => this.renderCard(card, cards))
@@ -146,25 +138,28 @@ export class BoardRenderer {
     const description = initiative.metadata.description ? 
       `<div class="initiative-description">${initiative.metadata.description}</div>` : '';
     
-    // Add archive button for initiatives in "done" column
-    const isDoneColumn = this.normalizeStatus(initiative.metadata.status) === 'done';
-    const archiveButton = isDoneColumn ? 
-      `<button class="archive-btn" data-action="archive-initiative" data-id="${initiative.id}">📦</button>` : '';
+    // Archive button is handled in the context menu
+
+    // Calculate days since creation
+    const daysSinceCreation = this.calculateDaysSinceCreation(initiative.metadata.date);
 
     return `
-      <div class="simple-kanban-initiative clickable-initiative" 
+      <div class="simple-kanban-initiative clickable-initiative draggable-item" 
            data-id="${initiative.id}" 
-           data-type="initiative" 
+           data-type="initiative"
            draggable="true">
         <div class="initiative-header">
           <h4>${initiative.metadata.title}</h4>
+          <div class="initiative-age">
+            <span class="age-icon">🕒</span>
+            <span class="age-days">${daysSinceCreation}d</span>
+          </div>
         </div>
         ${description}
         <div class="initiative-meta">
           <div class="tags">
             ${initiative.metadata.tags?.map(tag => `<span class="tag">${tag}</span>`).join('') || ''}
           </div>
-          <span class="date">${initiative.metadata.date}</span>
         </div>
       </div>
     `;
@@ -197,18 +192,22 @@ export class BoardRenderer {
       relationshipInfo += `<div class="card-relationship successors">➡️ Blocks: ${succTitles}</div>`;
     }
 
-    // Add archive button for cards in "done" column
-    const isDoneColumn = this.normalizeStatus(card.metadata.status) === 'done';
-    const archiveButton = isDoneColumn ? 
-      `<button class="archive-btn" data-action="archive-card" data-id="${card.id}">📦</button>` : '';
+    // Archive button is handled in the context menu
+
+    // Calculate days since creation
+    const daysSinceCreation = this.calculateDaysSinceCreation(card.metadata.date);
 
     return `
-      <div class="simple-kanban-card clickable-card" 
+      <div class="simple-kanban-card clickable-card draggable-item" 
            data-id="${card.id}" 
-           data-type="card" 
+           data-type="card"
            draggable="true">
         <div class="card-header">
           <h4>${card.metadata.title}</h4>
+          <div class="card-age">
+            <span class="age-icon">🕒</span>
+            <span class="age-days">${daysSinceCreation}d</span>
+          </div>
         </div>
         ${initiative}
         ${description}
@@ -217,7 +216,6 @@ export class BoardRenderer {
           <div class="tags">
             ${card.metadata.tags?.map(tag => `<span class="tag">${tag}</span>`).join('') || ''}
           </div>
-          <span class="date">${card.metadata.date}</span>
         </div>
       </div>
     `;
@@ -246,5 +244,17 @@ export class BoardRenderer {
     };
     
     return statusMap[status] || status.toLowerCase().replace(/\s+/g, '-');
+  }
+
+  private static calculateDaysSinceCreation(dateString: string): number {
+    try {
+      const creationDate = new Date(dateString);
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - creationDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays;
+    } catch (error) {
+      return 0;
+    }
   }
 }

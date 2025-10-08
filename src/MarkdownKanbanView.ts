@@ -1,5 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile, App } from 'obsidian';
-import { BoardData, Card, Initiative } from './types';
+import { ItemView, WorkspaceLeaf, App } from 'obsidian';
 import { BoardManager } from './board-manager';
 import { BoardRenderer } from './board-renderer';
 import { DragDropHandler } from './drag-drop-handler';
@@ -7,30 +6,15 @@ import { DragDropHandler } from './drag-drop-handler';
 export const MARKDOWN_KANBAN_VIEW_TYPE = 'markdown-kanban-view';
 
 export class MarkdownKanbanView extends ItemView {
-  private app: App;
-  private containerEl: HTMLElement;
+  public app: App;
+  public containerEl: HTMLElement;
   private boardManager: BoardManager;
-  private dragDropHandler: DragDropHandler;
   private contextMenu: HTMLElement | null = null;
+  private dragDropHandler: DragDropHandler | null = null;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
-    this.app = this.app;
     this.boardManager = new BoardManager(this.app);
-    this.dragDropHandler = new DragDropHandler(
-      async (cardId, newColumnId) => {
-        await this.boardManager.moveCardToColumn(cardId, newColumnId);
-        this.refreshBoard();
-      },
-      async (initiativeId, newColumnId) => {
-        await this.boardManager.moveInitiativeToColumn(initiativeId, newColumnId);
-        this.refreshBoard();
-      },
-      async (draggedId, targetId, isBefore, itemType) => {
-        await this.boardManager.reorderItem(draggedId, targetId, isBefore, itemType);
-        this.refreshBoard();
-      }
-    );
   }
 
   getViewType(): string {
@@ -46,7 +30,7 @@ export class MarkdownKanbanView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    const container = this.containerEl.children[1];
+    const container = this.containerEl.children[1] as HTMLElement;
     if (!this.boardManager.getFilePath()) {
       BoardRenderer.showNoBoardMessage(container);
     }
@@ -63,7 +47,7 @@ export class MarkdownKanbanView extends ItemView {
       await this.loadBoardFromFile(state.file);
     } else {
       console.log('No file in state, showing no board message');
-      const container = this.containerEl.children[1];
+      const container = this.containerEl.children[1] as HTMLElement;
       BoardRenderer.showNoBoardMessage(container);
     }
   }
@@ -77,11 +61,11 @@ export class MarkdownKanbanView extends ItemView {
   private async loadBoardFromFile(filePath: string): Promise<void> {
     try {
       await this.boardManager.loadBoardFromFile(filePath);
-      const container = this.containerEl.children[1];
+      const container = this.containerEl.children[1] as HTMLElement;
       this.renderBoard(container);
     } catch (error) {
       console.error('Error loading board from file:', error);
-      const container = this.containerEl.children[1];
+      const container = this.containerEl.children[1] as HTMLElement;
       container.innerHTML = `
         <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 2rem; text-align: center;">
           <h2 style="color: var(--text-error); margin-bottom: 1rem;">Error Loading Board</h2>
@@ -108,21 +92,56 @@ export class MarkdownKanbanView extends ItemView {
     const initiatives = this.boardManager.getInitiatives();
 
     BoardRenderer.renderBoard(container, boardData, cards, initiatives);
-    this.addEventListeners(container);
-    this.addClickListeners(container);
-    this.dragDropHandler.addDragAndDropListeners(container);
+    
+    // Add a small delay to ensure DOM is fully rendered before attaching listeners
+    setTimeout(() => {
+      this.addEventListeners(container);
+      this.addClickListeners(container);
+      this.initializeDragDrop(container);
+      this.addTestButton(container);
+    }, 10);
   }
 
   private refreshBoard(): void {
-    const container = this.containerEl.children[1];
+    const container = this.containerEl.children[1] as HTMLElement;
     this.renderBoard(container);
   }
 
+  private initializeDragDrop(container: HTMLElement): void {
+    // Clean up existing drag drop handler
+    if (this.dragDropHandler) {
+      // Remove old event listeners by creating a new container
+      const newContainer = container.cloneNode(true) as HTMLElement;
+      container.parentNode?.replaceChild(newContainer, container);
+      container = newContainer;
+    }
+
+    // Create new drag drop handler
+    this.dragDropHandler = new DragDropHandler(
+      (cardId: string, newColumnId: string) => this.boardManager.moveCardToColumn(cardId, newColumnId),
+      (initiativeId: string, newColumnId: string) => this.boardManager.moveInitiativeToColumn(initiativeId, newColumnId),
+      () => this.refreshBoard()
+    );
+
+    // Add drag and drop listeners
+    this.dragDropHandler.addDragAndDropListeners(container);
+  }
+
   private addEventListeners(container: HTMLElement): void {
+    console.log('Adding event listeners to container:', container);
+    
     // Add listeners for column right-click context menus
-    container.querySelectorAll('.simple-kanban-column').forEach(column => {
+    const columns = container.querySelectorAll('.simple-kanban-column');
+    console.log('Found columns:', columns.length);
+    
+    columns.forEach((column, index) => {
+      console.log(`Adding contextmenu listener to column ${index}:`, column);
       column.addEventListener('contextmenu', (e) => {
+        console.log('Column contextmenu event triggered:', e);
+        e.preventDefault();
+        e.stopPropagation();
         const columnId = (e.currentTarget as HTMLElement).dataset.columnId;
+        console.log('Column ID:', columnId);
         if (columnId) {
           this.showContextMenu(e as MouseEvent, 'column', undefined, columnId);
         }
@@ -140,7 +159,10 @@ export class MarkdownKanbanView extends ItemView {
 
   private addClickListeners(container: HTMLElement): void {
     // Add click listeners for cards and initiatives (left click to edit)
-    container.querySelectorAll('.clickable-card, .clickable-initiative').forEach(element => {
+    const clickableElements = container.querySelectorAll('.clickable-card, .clickable-initiative');
+    console.log('Found clickable elements:', clickableElements.length);
+    
+    clickableElements.forEach(element => {
       element.addEventListener('click', async (e) => {
         e.stopPropagation();
         const id = (e.currentTarget as HTMLElement).dataset.id;
@@ -158,15 +180,43 @@ export class MarkdownKanbanView extends ItemView {
 
       // Add right-click context menu listeners
       element.addEventListener('contextmenu', (e) => {
+        console.log('Element contextmenu event triggered:', e);
+        e.preventDefault();
         e.stopPropagation();
         const id = (e.currentTarget as HTMLElement).dataset.id;
         const type = (e.currentTarget as HTMLElement).dataset.type;
+        console.log('Element ID:', id, 'Type:', type);
         
         if (id && type) {
           this.showContextMenu(e as MouseEvent, type as 'card' | 'initiative', id);
         }
       });
     });
+  }
+
+  private addTestButton(_container: HTMLElement): void {
+    // Add a test button to debug context menu functionality
+    const testButton = document.createElement('button');
+    testButton.textContent = 'Test Context Menu';
+    testButton.style.position = 'fixed';
+    testButton.style.top = '10px';
+    testButton.style.right = '10px';
+    testButton.style.zIndex = '1000000';
+    testButton.style.padding = '10px';
+    testButton.style.background = 'var(--interactive-accent)';
+    testButton.style.color = 'var(--text-on-accent)';
+    testButton.style.border = 'none';
+    testButton.style.borderRadius = '4px';
+    testButton.style.cursor = 'pointer';
+    
+    testButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('Test button clicked, showing context menu');
+      this.showContextMenu(e as MouseEvent, 'column', undefined, 'test-column');
+    });
+    
+    document.body.appendChild(testButton);
   }
 
   private toggleSwimlane(header: HTMLElement): void {
@@ -192,13 +242,14 @@ export class MarkdownKanbanView extends ItemView {
     menu.style.position = 'fixed';
     menu.style.zIndex = '999999';
     
-    // Try appending to the view container first, fallback to document.body
-    const viewContainer = this.containerEl.closest('.view-content') || document.body;
-    viewContainer.appendChild(menu);
+    // Always append to document.body to ensure proper positioning
+    document.body.appendChild(menu);
     return menu;
   }
 
   private showContextMenu(event: MouseEvent, type: 'card' | 'initiative' | 'column', id?: string, columnId?: string): void {
+    console.log('showContextMenu called:', { type, id, columnId, event });
+    
     event.preventDefault();
     event.stopPropagation();
 
@@ -219,6 +270,10 @@ export class MarkdownKanbanView extends ItemView {
           <span class="context-menu-icon">✏️</span>
           Edit Card
         </div>
+        <div class="context-menu-item" data-action="move-card" data-id="${id}">
+          <span class="context-menu-icon">↔️</span>
+          Move Card
+        </div>
         ${isDoneColumn ? `
         <div class="context-menu-item" data-action="archive-card" data-id="${id}">
           <span class="context-menu-icon">📦</span>
@@ -238,6 +293,10 @@ export class MarkdownKanbanView extends ItemView {
         <div class="context-menu-item" data-action="edit-initiative" data-id="${id}">
           <span class="context-menu-icon">✏️</span>
           Edit Initiative
+        </div>
+        <div class="context-menu-item" data-action="move-initiative" data-id="${id}">
+          <span class="context-menu-icon">↔️</span>
+          Move Initiative
         </div>
         ${isDoneColumn ? `
         <div class="context-menu-item" data-action="archive-initiative" data-id="${id}">
@@ -278,6 +337,17 @@ export class MarkdownKanbanView extends ItemView {
     this.contextMenu.style.display = 'block';
     this.contextMenu.style.visibility = 'visible';
     this.contextMenu.style.opacity = '1';
+    
+    console.log('Context menu positioned at:', { 
+      left: event.pageX, 
+      top: event.pageY, 
+      menuItems: menuItems.length,
+      menuElement: this.contextMenu,
+      menuHTML: this.contextMenu.innerHTML
+    });
+    
+    // Force a reflow to ensure the menu is rendered
+    this.contextMenu.offsetHeight;
 
     // Add event listeners
     this.contextMenu.querySelectorAll('.context-menu-item').forEach(item => {
@@ -355,11 +425,85 @@ export class MarkdownKanbanView extends ItemView {
           this.refreshBoard();
         }
         break;
+      case 'move-card':
+        if (id) {
+          await this.showMoveModal(id, 'card');
+        }
+        break;
+      case 'move-initiative':
+        if (id) {
+          await this.showMoveModal(id, 'initiative');
+        }
+        break;
     }
   }
 
   private normalizeStatus(status: string): string {
     return status.toLowerCase().replace(/\s+/g, '-');
+  }
+
+  private async showMoveModal(itemId: string, itemType: 'card' | 'initiative'): Promise<void> {
+    const boardData = this.boardManager.getBoardData();
+    const columns = boardData.columns.sort((a, b) => a.order - b.order);
+    
+    const columnOptions = columns.map(column => 
+      `<option value="${column.id}">${column.title}</option>`
+    ).join('');
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-panel">
+        <div class="modal-header">
+          <h3>Move ${itemType === 'card' ? 'Card' : 'Initiative'}</h3>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Select Column:</label>
+            <select class="modal-select" id="move-column-select">
+              ${columnOptions}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="move-cancel">Cancel</button>
+          <button class="btn-primary" id="move-confirm">Move</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    return new Promise((resolve) => {
+      const closeModal = () => {
+        modal.remove();
+        resolve();
+      };
+
+      modal.querySelector('.modal-close')?.addEventListener('click', closeModal);
+      modal.querySelector('#move-cancel')?.addEventListener('click', closeModal);
+      modal.querySelector('#move-confirm')?.addEventListener('click', async () => {
+        const select = modal.querySelector('#move-column-select') as HTMLSelectElement;
+        const newColumnId = select.value;
+        
+        if (itemType === 'card') {
+          await this.boardManager.moveCardToColumn(itemId, newColumnId);
+        } else {
+          await this.boardManager.moveInitiativeToColumn(itemId, newColumnId);
+        }
+        
+        this.refreshBoard();
+        closeModal();
+      });
+
+      // Close on overlay click
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closeModal();
+        }
+      });
+    });
   }
 
 }
