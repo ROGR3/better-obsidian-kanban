@@ -142,12 +142,13 @@ export class MarkdownKanbanView extends ItemView {
     });
 
     // Add listeners for swimlane toggles
-    container.querySelectorAll('.swimlane-toggle').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+    container.querySelectorAll('.swimlane-header').forEach(header => {
+      header.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.toggleSwimlane(e.target as HTMLElement);
+        this.toggleSwimlane(header as HTMLElement);
       });
     });
+
   }
 
   private addClickListeners(container: HTMLElement): void {
@@ -169,28 +170,7 @@ export class MarkdownKanbanView extends ItemView {
       });
     });
 
-    // Add listeners for edit buttons
-    container.querySelectorAll('[data-action="edit-card"]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const id = (e.target as HTMLElement).dataset.id;
-        if (id) {
-          await this.boardManager.editCard(id);
-          this.refreshBoard();
-        }
-      });
-    });
 
-    container.querySelectorAll('[data-action="edit-initiative"]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const id = (e.target as HTMLElement).dataset.id;
-        if (id) {
-          await this.boardManager.editInitiative(id);
-          this.refreshBoard();
-        }
-      });
-    });
 
     // Add listeners for delete buttons
     container.querySelectorAll('[data-action="delete-card"]').forEach(btn => {
@@ -217,14 +197,17 @@ export class MarkdownKanbanView extends ItemView {
   }
 
   private toggleSwimlane(header: HTMLElement): void {
-    const swimlane = header.getAttribute('data-swimlane');
-    if (!swimlane) return;
+    // Find the swimlane container
+    const swimlaneContainer = header.closest('.simple-kanban-swimlane');
+    if (!swimlaneContainer) return;
 
-    const content = document.querySelector(`[data-swimlane="${swimlane}"]`);
-    if (!content) return;
+    const content = swimlaneContainer.querySelector('.swimlane-content') as HTMLElement;
+    const toggleButton = header.querySelector('.swimlane-toggle') as HTMLElement;
+    if (!content || !toggleButton) return;
 
     const isCollapsed = content.style.display === 'none';
     content.style.display = isCollapsed ? 'block' : 'none';
-    header.querySelector('.swimlane-toggle').textContent = isCollapsed ? '▼' : '▶';
+    toggleButton.textContent = isCollapsed ? '▼' : '▶';
   }
+
 }

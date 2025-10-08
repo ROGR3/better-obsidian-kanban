@@ -57,7 +57,7 @@ export class BoardManager {
                 predecessors: item.predecessors || [],
                 successors: item.successors || [],
                 date: item.date,
-                priority: 'medium'
+                tags: item.tags || []
               }
             });
           } else if (item.type === 'initiative') {
@@ -69,7 +69,7 @@ export class BoardManager {
                 status: item.status,
                 description: item.description || '',
                 date: item.date,
-                priority: 'medium'
+                tags: item.tags || []
               }
             });
           }
@@ -141,15 +141,55 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
   }
 
   async addCardToColumn(columnId: string): Promise<void> {
+    const availableCards = Array.from(this.cards.values()).map(card => ({
+      id: card.id,
+      title: card.metadata.title
+    }));
+
+    const availableInitiatives = Array.from(this.initiatives.values()).map(initiative => ({
+      id: initiative.id,
+      title: initiative.metadata.title
+    }));
+
     const cardData = await ModalManager.showCardModal('Add Card', {
       title: '',
       description: '',
       initiative: '',
-      priority: 'medium'
-    });
+      tags: []
+    }, availableCards, availableInitiatives);
     if (!cardData) return;
 
     const cardId = 'card_' + Date.now();
+    
+    // Handle relationships
+    let predecessors: string[] = [];
+    let successors: string[] = [];
+    
+    if (cardData.linkedCard && cardData.relationshipType) {
+      if (cardData.relationshipType === 'predecessor') {
+        predecessors = [cardData.linkedCard];
+        // Add this card as successor to the linked card
+        const linkedCard = this.cards.get(cardData.linkedCard);
+        if (linkedCard) {
+          if (!linkedCard.metadata.successors) {
+            linkedCard.metadata.successors = [];
+          }
+          linkedCard.metadata.successors.push(cardId);
+        }
+      } else if (cardData.relationshipType === 'successor') {
+        successors = [cardData.linkedCard];
+        // Add this card as predecessor to the linked card
+        const linkedCard = this.cards.get(cardData.linkedCard);
+        if (linkedCard) {
+          if (!linkedCard.metadata.predecessors) {
+            linkedCard.metadata.predecessors = [];
+          }
+          linkedCard.metadata.predecessors.push(cardId);
+        }
+      }
+      // For sibling relationships, we don't need to modify the linked card
+    }
+
     const newCard: Card = {
       id: cardId,
       content: cardData.description,
@@ -157,10 +197,10 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
         title: cardData.title,
         status: columnId,
         initiative: cardData.initiative,
-        predecessors: [],
-        successors: [],
+        predecessors: predecessors,
+        successors: successors,
         date: new Date().toISOString().split('T')[0],
-        priority: cardData.priority
+        tags: cardData.tags
       }
     };
 
@@ -172,7 +212,7 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
     const initiativeData = await ModalManager.showInitiativeModal('Add Initiative', {
       title: '',
       description: '',
-      priority: 'medium'
+      tags: []
     });
     if (!initiativeData) return;
 
@@ -185,7 +225,7 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
         status: columnId,
         description: initiativeData.description,
         date: new Date().toISOString().split('T')[0],
-        priority: initiativeData.priority
+        tags: initiativeData.tags
       }
     };
 
@@ -197,18 +237,83 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
     const card = this.cards.get(cardId);
     if (!card) return;
 
+    const availableCards = Array.from(this.cards.values())
+      .filter(c => c.id !== cardId) // Exclude current card from available cards
+      .map(card => ({
+        id: card.id,
+        title: card.metadata.title
+      }));
+
+    const availableInitiatives = Array.from(this.initiatives.values()).map(initiative => ({
+      id: initiative.id,
+      title: initiative.metadata.title
+    }));
+
     const cardData = await ModalManager.showCardModal('Edit Card', {
       title: card.metadata.title,
       description: card.content,
       initiative: card.metadata.initiative,
-      priority: card.metadata.priority
-    });
+      tags: card.metadata.tags,
+      linkedCard: card.metadata.predecessors?.[0] || card.metadata.successors?.[0] || undefined,
+      relationshipType: card.metadata.predecessors?.length ? 'predecessor' : 
+                      card.metadata.successors?.length ? 'successor' : undefined
+    }, availableCards, availableInitiatives);
     if (!cardData) return;
+
+    // Handle relationship changes
+    const oldPredecessors = card.metadata.predecessors || [];
+    const oldSuccessors = card.metadata.successors || [];
+
+    // Remove old relationships
+    oldPredecessors.forEach(predId => {
+      const predCard = this.cards.get(predId);
+      if (predCard && predCard.metadata.successors) {
+        predCard.metadata.successors = predCard.metadata.successors.filter(id => id !== cardId);
+      }
+    });
+    oldSuccessors.forEach(succId => {
+      const succCard = this.cards.get(succId);
+      if (succCard && succCard.metadata.predecessors) {
+        succCard.metadata.predecessors = succCard.metadata.predecessors.filter(id => id !== cardId);
+      }
+    });
+
+    // Add new relationships
+    let predecessors: string[] = [];
+    let successors: string[] = [];
+    
+    if (cardData.linkedCard && cardData.relationshipType) {
+      if (cardData.relationshipType === 'predecessor') {
+        predecessors = [cardData.linkedCard];
+        const linkedCard = this.cards.get(cardData.linkedCard);
+        if (linkedCard) {
+          if (!linkedCard.metadata.successors) {
+            linkedCard.metadata.successors = [];
+          }
+          if (!linkedCard.metadata.successors.includes(cardId)) {
+            linkedCard.metadata.successors.push(cardId);
+          }
+        }
+      } else if (cardData.relationshipType === 'successor') {
+        successors = [cardData.linkedCard];
+        const linkedCard = this.cards.get(cardData.linkedCard);
+        if (linkedCard) {
+          if (!linkedCard.metadata.predecessors) {
+            linkedCard.metadata.predecessors = [];
+          }
+          if (!linkedCard.metadata.predecessors.includes(cardId)) {
+            linkedCard.metadata.predecessors.push(cardId);
+          }
+        }
+      }
+    }
 
     card.metadata.title = cardData.title;
     card.content = cardData.description;
     card.metadata.initiative = cardData.initiative;
-    card.metadata.priority = cardData.priority;
+    card.metadata.tags = cardData.tags;
+    card.metadata.predecessors = predecessors;
+    card.metadata.successors = successors;
 
     await this.saveBoardToFile();
   }
@@ -220,13 +325,13 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
     const initiativeData = await ModalManager.showInitiativeModal('Edit Initiative', {
       title: initiative.metadata.title,
       description: initiative.content,
-      priority: initiative.metadata.priority
+      tags: initiative.metadata.tags
     });
     if (!initiativeData) return;
 
     initiative.metadata.title = initiativeData.title;
     initiative.content = initiativeData.description;
-    initiative.metadata.priority = initiativeData.priority;
+    initiative.metadata.tags = initiativeData.tags;
 
     await this.saveBoardToFile();
   }

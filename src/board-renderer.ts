@@ -75,7 +75,7 @@ export class BoardRenderer {
 
   private static renderColumn(column: BoardColumn, cards: Map<string, Card>, initiatives: Map<string, Initiative>): string {
     return `
-      <div class="simple-kanban-column" data-column-id="${column.id}" style="border-left: 4px solid ${column.color}">
+      <div class="simple-kanban-column" data-column-id="${column.id}">
         <div class="simple-kanban-column-header">
           <h3>${column.title}</h3>
           <span class="column-count">${this.getColumnCount(column.id, cards, initiatives)}</span>
@@ -106,7 +106,7 @@ export class BoardRenderer {
       .join('');
 
     return `
-      <div class="simple-kanban-column" data-column-id="${column.id}" style="border-left: 4px solid ${column.color}">
+      <div class="simple-kanban-column" data-column-id="${column.id}">
         <div class="simple-kanban-column-header">
           <h3>${column.title}</h3>
           <span class="column-count">${initiativesInColumn.length}</span>
@@ -130,11 +130,11 @@ export class BoardRenderer {
     console.log(`Rendering task column ${column.id} with ${cardsInColumn.length} cards`);
 
     const cardsHtml = cardsInColumn
-      .map(card => this.renderCard(card))
+      .map(card => this.renderCard(card, cards))
       .join('');
 
     return `
-      <div class="simple-kanban-column" data-column-id="${column.id}" style="border-left: 4px solid ${column.color}">
+      <div class="simple-kanban-column" data-column-id="${column.id}">
         <div class="simple-kanban-column-header">
           <h3>${column.title}</h3>
           <span class="column-count">${cardsInColumn.length}</span>
@@ -163,25 +163,46 @@ export class BoardRenderer {
         <div class="initiative-header">
           <h4>${initiative.metadata.title}</h4>
           <div class="initiative-actions">
-            <button class="edit-btn" data-action="edit-initiative" data-id="${initiative.id}">✏️</button>
             <button class="delete-btn" data-action="delete-initiative" data-id="${initiative.id}">🗑️</button>
           </div>
         </div>
         ${description}
         <div class="initiative-meta">
-          <span class="priority priority-${initiative.metadata.priority}">${initiative.metadata.priority}</span>
+          <div class="tags">
+            ${initiative.metadata.tags?.map(tag => `<span class="tag">${tag}</span>`).join('') || ''}
+          </div>
           <span class="date">${initiative.metadata.date}</span>
         </div>
       </div>
     `;
   }
 
-  private static renderCard(card: Card): string {
+  private static renderCard(card: Card, allCards: Map<string, Card>): string {
     const initiative = card.metadata.initiative ? 
       `<div class="card-initiative">📋 ${card.metadata.initiative}</div>` : '';
     
     const description = card.content ? 
       `<div class="card-description">${card.content}</div>` : '';
+
+    // Relationship indicators
+    const predecessors = card.metadata.predecessors || [];
+    const successors = card.metadata.successors || [];
+    
+    let relationshipInfo = '';
+    if (predecessors.length > 0) {
+      const predTitles = predecessors.map(id => {
+        const predCard = allCards.get(id);
+        return predCard ? predCard.metadata.title : 'Unknown';
+      }).join(', ');
+      relationshipInfo += `<div class="card-relationship predecessors">⬅️ Depends on: ${predTitles}</div>`;
+    }
+    if (successors.length > 0) {
+      const succTitles = successors.map(id => {
+        const succCard = allCards.get(id);
+        return succCard ? succCard.metadata.title : 'Unknown';
+      }).join(', ');
+      relationshipInfo += `<div class="card-relationship successors">➡️ Blocks: ${succTitles}</div>`;
+    }
 
     return `
       <div class="simple-kanban-card clickable-card" 
@@ -191,14 +212,16 @@ export class BoardRenderer {
         <div class="card-header">
           <h4>${card.metadata.title}</h4>
           <div class="card-actions">
-            <button class="edit-btn" data-action="edit-card" data-id="${card.id}">✏️</button>
             <button class="delete-btn" data-action="delete-card" data-id="${card.id}">🗑️</button>
           </div>
         </div>
         ${initiative}
         ${description}
+        ${relationshipInfo}
         <div class="card-meta">
-          <span class="priority priority-${card.metadata.priority}">${card.metadata.priority}</span>
+          <div class="tags">
+            ${card.metadata.tags?.map(tag => `<span class="tag">${tag}</span>`).join('') || ''}
+          </div>
           <span class="date">${card.metadata.date}</span>
         </div>
       </div>

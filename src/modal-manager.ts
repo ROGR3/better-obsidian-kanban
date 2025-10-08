@@ -122,7 +122,7 @@ export class ModalManager {
     });
   }
 
-  static async showCardModal(title: string, initialData: ModalData): Promise<ModalData | null> {
+  static async showCardModal(title: string, initialData: ModalData, availableCards: Array<{id: string, title: string}> = [], availableInitiatives: Array<{id: string, title: string}> = []): Promise<ModalData | null> {
     return new Promise((resolve) => {
       const modal = document.createElement('div');
       modal.className = 'modal-overlay';
@@ -143,14 +143,33 @@ export class ModalManager {
             </div>
             <div class="form-group">
               <label>Initiative</label>
-              <input type="text" class="modal-input" id="card-initiative" value="${initialData.initiative || ''}" placeholder="Enter initiative name">
+              <select class="modal-select" id="card-initiative">
+                <option value="">None</option>
+                ${availableInitiatives.map(initiative => 
+                  `<option value="${initiative.title}" ${initialData.initiative === initiative.title ? 'selected' : ''}>${initiative.title}</option>`
+                ).join('')}
+              </select>
             </div>
             <div class="form-group">
-              <label>Priority</label>
-              <select class="modal-select" id="card-priority">
-                <option value="low" ${initialData.priority === 'low' ? 'selected' : ''}>Low</option>
-                <option value="medium" ${initialData.priority === 'medium' ? 'selected' : ''}>Medium</option>
-                <option value="high" ${initialData.priority === 'high' ? 'selected' : ''}>High</option>
+              <label>Tags</label>
+              <input type="text" class="modal-input" id="card-tags" value="${initialData.tags?.join(', ') || ''}" placeholder="Enter tags separated by commas (e.g., #work, #urgent)">
+            </div>
+            <div class="form-group">
+              <label>Link to Card</label>
+              <select class="modal-select" id="card-linked-card">
+                <option value="">None</option>
+                ${availableCards.map(card => 
+                  `<option value="${card.id}" ${initialData.linkedCard === card.id ? 'selected' : ''}>${card.title}</option>`
+                ).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Relationship Type</label>
+              <select class="modal-select" id="card-relationship-type">
+                <option value="">None</option>
+                <option value="sibling" ${initialData.relationshipType === 'sibling' ? 'selected' : ''}>Sibling</option>
+                <option value="predecessor" ${initialData.relationshipType === 'predecessor' ? 'selected' : ''}>Predecessor</option>
+                <option value="successor" ${initialData.relationshipType === 'successor' ? 'selected' : ''}>Successor</option>
               </select>
             </div>
           </div>
@@ -165,8 +184,10 @@ export class ModalManager {
 
       const titleInput = modal.querySelector('#card-title') as HTMLInputElement;
       const descriptionInput = modal.querySelector('#card-description') as HTMLTextAreaElement;
-      const initiativeInput = modal.querySelector('#card-initiative') as HTMLInputElement;
-      const prioritySelect = modal.querySelector('#card-priority') as HTMLSelectElement;
+      const initiativeSelect = modal.querySelector('#card-initiative') as HTMLSelectElement;
+      const tagsInput = modal.querySelector('#card-tags') as HTMLInputElement;
+      const linkedCardSelect = modal.querySelector('#card-linked-card') as HTMLSelectElement;
+      const relationshipTypeSelect = modal.querySelector('#card-relationship-type') as HTMLSelectElement;
       const confirmBtn = modal.querySelector('.modal-confirm') as HTMLButtonElement;
       const cancelBtn = modal.querySelector('.modal-cancel') as HTMLButtonElement;
       const closeBtn = modal.querySelector('.modal-close') as HTMLButtonElement;
@@ -182,11 +203,18 @@ export class ModalManager {
           return;
         }
         
+        const tags = tagsInput.value.trim()
+          .split(',')
+          .map(tag => tag.trim())
+          .filter(tag => tag.length > 0);
+
         const data = {
           title: title,
           description: descriptionInput.value.trim(),
-          initiative: initiativeInput.value.trim(),
-          priority: prioritySelect.value
+          initiative: initiativeSelect.value || undefined,
+          tags: tags,
+          linkedCard: linkedCardSelect.value || undefined,
+          relationshipType: relationshipTypeSelect.value || undefined
         };
         
         cleanup();
@@ -244,12 +272,8 @@ export class ModalManager {
               <textarea class="modal-textarea" id="initiative-description" placeholder="Enter description">${initialData.description}</textarea>
             </div>
             <div class="form-group">
-              <label>Priority</label>
-              <select class="modal-select" id="initiative-priority">
-                <option value="low" ${initialData.priority === 'low' ? 'selected' : ''}>Low</option>
-                <option value="medium" ${initialData.priority === 'medium' ? 'selected' : ''}>Medium</option>
-                <option value="high" ${initialData.priority === 'high' ? 'selected' : ''}>High</option>
-              </select>
+              <label>Tags</label>
+              <input type="text" class="modal-input" id="initiative-tags" value="${initialData.tags?.join(', ') || ''}" placeholder="Enter tags separated by commas (e.g., #work, #urgent)">
             </div>
           </div>
           <div class="modal-footer">
@@ -263,7 +287,7 @@ export class ModalManager {
 
       const titleInput = modal.querySelector('#initiative-title') as HTMLInputElement;
       const descriptionInput = modal.querySelector('#initiative-description') as HTMLTextAreaElement;
-      const prioritySelect = modal.querySelector('#initiative-priority') as HTMLSelectElement;
+      const tagsInput = modal.querySelector('#initiative-tags') as HTMLInputElement;
       const confirmBtn = modal.querySelector('.modal-confirm') as HTMLButtonElement;
       const cancelBtn = modal.querySelector('.modal-cancel') as HTMLButtonElement;
       const closeBtn = modal.querySelector('.modal-close') as HTMLButtonElement;
@@ -279,10 +303,15 @@ export class ModalManager {
           return;
         }
         
+        const tags = tagsInput.value.trim()
+          .split(',')
+          .map(tag => tag.trim())
+          .filter(tag => tag.length > 0);
+
         const data = {
           title: title,
           description: descriptionInput.value.trim(),
-          priority: prioritySelect.value
+          tags: tags
         };
         
         cleanup();

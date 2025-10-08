@@ -37,7 +37,7 @@ export interface CardMetadata {
   predecessors: string[];
   successors: string[];
   date: string;
-  priority: string;
+  tags: string[];
 }
 
 export interface InitiativeMetadata {
@@ -45,7 +45,7 @@ export interface InitiativeMetadata {
   status: string;
   description: string;
   date: string;
-  priority: string;
+  tags: string[];
 }
 
 export interface Card {
@@ -64,5 +64,7 @@ export interface ModalData {
   title: string;
   description: string;
   initiative?: string;
-  priority: string;
+  tags: string[];
+  linkedCard?: string;
+  relationshipType?: 'sibling' | 'predecessor' | 'successor';
 }
