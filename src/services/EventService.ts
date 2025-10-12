@@ -1,4 +1,4 @@
-import { IEventService, ItemType, ContextAction } from '../types';
+import { IEventService, ItemType } from '../types';
 
 export class EventService implements IEventService {
   private eventHandlers: Map<string, EventListener> = new Map();

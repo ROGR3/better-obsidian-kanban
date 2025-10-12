@@ -32,6 +32,13 @@ export interface BoardItem {
 }
 
 // Item metadata interfaces
+export interface StatusHistoryEntry {
+  status: string;
+  enteredAt: string; // ISO timestamp
+  leftAt?: string; // ISO timestamp, undefined if still in this status
+  duration?: number; // Duration in milliseconds, calculated when left
+}
+
 export interface CardMetadata {
   title: string;
   status: string;
@@ -41,6 +48,7 @@ export interface CardMetadata {
   date: string;
   tags: string[];
   archived: boolean;
+  history: StatusHistoryEntry[];
 }
 
 export interface InitiativeMetadata {

@@ -1,7 +1,8 @@
 import { App, TFile } from 'obsidian';
-import { BoardData, Card, Initiative, ModalData, IBoardManager } from './types';
+import { BoardData, Card, Initiative, IBoardManager, StatusHistoryEntry } from './types';
 import { FrontmatterParser } from './frontmatter-parser';
 import { ModalManager } from './modal-manager';
+import { HistoryService } from './services/HistoryService';
 
 export class BoardManager implements IBoardManager {
   private app: App;
@@ -47,7 +48,7 @@ export class BoardManager implements IBoardManager {
       if (frontmatter.items) {
         for (const item of frontmatter.items) {
           if (item.type === 'card') {
-            this.cards.set(item.id, {
+            const card: Card = {
               id: item.id,
               content: item.note || '',
               metadata: {
@@ -58,9 +59,17 @@ export class BoardManager implements IBoardManager {
                 successors: item.successors || [],
                 date: item.date,
                 tags: item.tags || [],
-                archived: item.archived || false
+                archived: item.archived || false,
+                history: item.history || []
               }
-            });
+            };
+            
+            // Initialize history for existing cards if they don't have it
+            if (!card.metadata.history || card.metadata.history.length === 0) {
+              HistoryService.initializeCardHistory(card);
+            }
+            
+            this.cards.set(item.id, card);
           } else if (item.type === 'initiative') {
             this.initiatives.set(item.id, {
               id: item.id,
@@ -92,7 +101,6 @@ export class BoardManager implements IBoardManager {
       if (!file || !(file instanceof TFile)) return;
 
       const content = await this.app.vault.read(file);
-      const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
       const bodyContent = content.replace(/^---\n[\s\S]*?\n---\n/, '');
 
       // Create new items array
@@ -109,7 +117,8 @@ export class BoardManager implements IBoardManager {
           type: 'card',
           initiative: card.metadata.initiative,
           predecessors: card.metadata.predecessors,
-          successors: card.metadata.successors
+          successors: card.metadata.successors,
+          history: card.metadata.history || []
         });
       });
 
@@ -203,9 +212,13 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
         successors: successors,
         date: new Date().toISOString().split('T')[0],
         tags: cardData.tags,
-        archived: false
+        archived: false,
+        history: []
       }
     };
+
+    // Initialize history for the new card
+    HistoryService.initializeCardHistory(newCard);
 
     this.cards.set(cardId, newCard);
     await this.saveBoardToFile();
@@ -388,11 +401,36 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
     await this.saveBoardToFile();
   }
 
+  // History-related methods
+  getCardHistory(cardId: string): StatusHistoryEntry[] {
+    const card = this.cards.get(cardId);
+    return card?.metadata.history || [];
+  }
+
+  getCardTimeInStatus(cardId: string, status: string): number {
+    const card = this.cards.get(cardId);
+    if (!card) return 0;
+    return HistoryService.getTimeInStatus(card, status);
+  }
+
+  getCardCurrentStatusDuration(cardId: string): number {
+    const card = this.cards.get(cardId);
+    if (!card) return 0;
+    return HistoryService.getCurrentStatusDuration(card);
+  }
+
+  getCardStatusSummary(cardId: string): { [status: string]: number } {
+    const card = this.cards.get(cardId);
+    if (!card) return {};
+    return HistoryService.getStatusSummary(card);
+  }
+
   async moveCardToColumn(cardId: string, newColumnId: string): Promise<void> {
     const card = this.cards.get(cardId);
     if (!card) return;
 
-    card.metadata.status = newColumnId;
+    // Update history when moving cards
+    HistoryService.updateCardHistory(card, newColumnId);
     await this.saveBoardToFile();
   }
 

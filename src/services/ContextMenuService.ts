@@ -1,4 +1,4 @@
-import { IContextMenuService, ContextMenuData, ContextAction, ItemType } from '../types';
+import { IContextMenuService, ContextMenuData, ContextAction } from '../types';
 
 export class ContextMenuService implements IContextMenuService {
   private contextMenu: HTMLElement | null = null;
@@ -79,11 +79,11 @@ export class ContextMenuService implements IContextMenuService {
     
     switch (type) {
       case 'card':
-        return this.generateCardMenuItems(id!);
+        return id ? this.generateCardMenuItems(id) : '';
       case 'initiative':
-        return this.generateInitiativeMenuItems(id!);
+        return id ? this.generateInitiativeMenuItems(id) : '';
       case 'column':
-        return this.generateColumnMenuItems(columnId!, event);
+        return columnId ? this.generateColumnMenuItems(columnId, event) : '';
       default:
         return '';
     }

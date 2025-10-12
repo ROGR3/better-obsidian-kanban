@@ -9,10 +9,7 @@ body:not(.workspace-leaf-content[data-type='markdown-kanban-view']) {
 }
 
 // Context menu should not be reset when it has the kanban context class
-body .context-menu.kanban-context-menu {
-  // Don't use all: revert as it might override our specific styles
-  // Just ensure it's not affected by the reset rules
-}
+// This rule ensures the context menu is not affected by global resets
 
 // Scope all styles to prevent conflicts with Obsidian's UI
 // Use a very specific selector to ensure it only applies to our kanban view
