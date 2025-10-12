@@ -1,9 +1,9 @@
 import { App, TFile } from 'obsidian';
-import { BoardData, Card, Initiative, ModalData } from './types';
+import { BoardData, Card, Initiative, ModalData, IBoardManager } from './types';
 import { FrontmatterParser } from './frontmatter-parser';
 import { ModalManager } from './modal-manager';
 
-export class BoardManager {
+export class BoardManager implements IBoardManager {
   private app: App;
   private filePath: string | null = null;
   private boardData: BoardData | null = null;

@@ -1,3 +1,4 @@
+// Core domain types
 export interface BoardColumn {
   id: string;
   title: string;
@@ -30,6 +31,7 @@ export interface BoardItem {
   description?: string;
 }
 
+// Item metadata interfaces
 export interface CardMetadata {
   title: string;
   status: string;
@@ -50,6 +52,7 @@ export interface InitiativeMetadata {
   archived: boolean;
 }
 
+// Core item interfaces
 export interface Card {
   id: string;
   content: string;
@@ -62,6 +65,7 @@ export interface Initiative {
   metadata: InitiativeMetadata;
 }
 
+// Modal and UI types
 export interface ModalData {
   title: string;
   description: string;
@@ -69,4 +73,83 @@ export interface ModalData {
   tags: string[];
   linkedCard?: string;
   relationshipType?: 'sibling' | 'predecessor' | 'successor';
+}
+
+// Event handling types
+export type ItemType = 'card' | 'initiative' | 'column';
+export type ContextAction = 
+  | 'edit-card' 
+  | 'edit-initiative' 
+  | 'delete-card' 
+  | 'delete-initiative' 
+  | 'archive-card' 
+  | 'archive-initiative' 
+  | 'add-card' 
+  | 'add-initiative' 
+  | 'move-card' 
+  | 'move-initiative';
+
+export interface ContextMenuData {
+  type: ItemType;
+  id?: string;
+  columnId?: string;
+  position: { x: number; y: number };
+}
+
+// Service interfaces
+export interface IEventService {
+  attachEventListeners(container: HTMLElement): void;
+  detachEventListeners(container: HTMLElement): void;
+}
+
+export interface IContextMenuService {
+  show(event: MouseEvent, data: ContextMenuData): void;
+  hide(): void;
+  isVisible(): boolean;
+}
+
+export interface IBoardRenderer {
+  render(container: HTMLElement, boardData: BoardData, cards: Map<string, Card>, initiatives: Map<string, Initiative>): void;
+  showNoBoardMessage(container: HTMLElement): void;
+}
+
+export interface IBoardManager {
+  loadBoardFromFile(filePath: string): Promise<void>;
+  saveBoardToFile(): Promise<void>;
+  getBoardData(): BoardData;
+  getCards(): Map<string, Card>;
+  getInitiatives(): Map<string, Initiative>;
+  getFilePath(): string | null;
+  editCard(cardId: string): Promise<void>;
+  editInitiative(initiativeId: string): Promise<void>;
+  deleteCard(cardId: string): Promise<void>;
+  deleteInitiative(initiativeId: string): Promise<void>;
+  archiveCard(cardId: string): Promise<void>;
+  archiveInitiative(initiativeId: string): Promise<void>;
+  addCardToColumn(columnId: string): Promise<void>;
+  addInitiativeToColumn(columnId: string): Promise<void>;
+  moveCardToColumn(cardId: string, columnId: string): Promise<void>;
+  moveInitiativeToColumn(initiativeId: string, columnId: string): Promise<void>;
+}
+
+// Error types
+export class KanbanError extends Error {
+  constructor(message: string, public code?: string) {
+    super(message);
+    this.name = 'KanbanError';
+  }
+}
+
+export class ValidationError extends KanbanError {
+  constructor(message: string, public field?: string) {
+    super(message, 'VALIDATION_ERROR');
+    this.name = 'ValidationError';
+  }
+}
+
+export class FileError extends KanbanError {
+  constructor(message: string, public filePath?: string) {
+    super(message, 'FILE_ERROR');
+    this.name = 'FileError';
+  }
 }

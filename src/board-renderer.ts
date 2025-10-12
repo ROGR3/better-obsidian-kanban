@@ -1,7 +1,7 @@
-import { BoardData, BoardColumn, Card, Initiative } from './types';
+import { BoardData, BoardColumn, Card, Initiative, IBoardRenderer } from './types';
 
-export class BoardRenderer {
-  static showNoBoardMessage(container: HTMLElement): void {
+export class BoardRenderer implements IBoardRenderer {
+  showNoBoardMessage(container: HTMLElement): void {
     container.innerHTML = `
       <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 2rem; text-align: center;">
         <h2 style="color: var(--text-muted); margin-bottom: 1rem;">No Kanban Board Selected</h2>
@@ -13,7 +13,7 @@ export class BoardRenderer {
     `;
   }
 
-  static renderBoard(container: HTMLElement, boardData: BoardData, cards: Map<string, Card>, initiatives: Map<string, Initiative>): void {
+  render(container: HTMLElement, boardData: BoardData, cards: Map<string, Card>, initiatives: Map<string, Initiative>): void {
     if (!boardData) {
       this.showNoBoardMessage(container);
       return;
@@ -67,7 +67,7 @@ export class BoardRenderer {
     `;
   }
 
-  private static renderColumn(column: BoardColumn, cards: Map<string, Card>, initiatives: Map<string, Initiative>): string {
+  private renderColumn(column: BoardColumn, cards: Map<string, Card>, initiatives: Map<string, Initiative>): string {
     return `
       <div class="simple-kanban-column" data-column-id="${column.id}">
         <div class="simple-kanban-column-header">
@@ -84,7 +84,7 @@ export class BoardRenderer {
     `;
   }
 
-  private static renderInitiativeColumn(column: BoardColumn, initiatives: Map<string, Initiative>): string {
+  private renderInitiativeColumn(column: BoardColumn, initiatives: Map<string, Initiative>): string {
     const initiativesInColumn = Array.from(initiatives.values())
       .filter(initiative => this.normalizeStatus(initiative.metadata.status) === column.id && !initiative.metadata.archived);
 
@@ -109,7 +109,7 @@ export class BoardRenderer {
     `;
   }
 
-  private static renderTaskColumn(column: BoardColumn, cards: Map<string, Card>): string {
+  private renderTaskColumn(column: BoardColumn, cards: Map<string, Card>): string {
     const cardsInColumn = Array.from(cards.values())
       .filter(card => this.normalizeStatus(card.metadata.status) === column.id && !card.metadata.archived);
 
@@ -134,7 +134,7 @@ export class BoardRenderer {
     `;
   }
 
-  private static renderInitiative(initiative: Initiative): string {
+  private renderInitiative(initiative: Initiative): string {
     const description = initiative.metadata.description ? 
       `<div class="initiative-description">${initiative.metadata.description}</div>` : '';
     
@@ -165,7 +165,7 @@ export class BoardRenderer {
     `;
   }
 
-  private static renderCard(card: Card, allCards: Map<string, Card>): string {
+  private renderCard(card: Card, allCards: Map<string, Card>): string {
     const initiative = card.metadata.initiative ? 
       `<div class="card-initiative">📋 ${card.metadata.initiative}</div>` : '';
     
@@ -221,7 +221,7 @@ export class BoardRenderer {
     `;
   }
 
-  private static getColumnCount(columnId: string, cards: Map<string, Card>, initiatives: Map<string, Initiative>): number {
+  private getColumnCount(columnId: string, cards: Map<string, Card>, initiatives: Map<string, Initiative>): number {
     const cardCount = Array.from(cards.values())
       .filter(card => this.normalizeStatus(card.metadata.status) === columnId).length;
     const initiativeCount = Array.from(initiatives.values())
@@ -229,7 +229,7 @@ export class BoardRenderer {
     return cardCount + initiativeCount;
   }
 
-  private static normalizeStatus(status: string): string {
+  private normalizeStatus(status: string): string {
     const statusMap: { [key: string]: string } = {
       'backlog': 'backlog',
       'Backlog': 'backlog',
@@ -246,7 +246,7 @@ export class BoardRenderer {
     return statusMap[status] || status.toLowerCase().replace(/\s+/g, '-');
   }
 
-  private static calculateDaysSinceCreation(dateString: string): number {
+  private calculateDaysSinceCreation(dateString: string): number {
     try {
       const creationDate = new Date(dateString);
       const now = new Date();
