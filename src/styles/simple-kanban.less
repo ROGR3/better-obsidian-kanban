@@ -1,10 +1,42 @@
-.simple-kanban {
+// Prevent our styles from affecting other parts of Obsidian
+// Reset any potential global interference when our view is not active
+body:not(.workspace-leaf-content[data-type='markdown-kanban-view']) {
+  .modal,
+  .modal-overlay {
+    all: unset !important;
+  }
+}
+
+// Context menu should not be reset when it has the kanban context class
+body .context-menu.kanban-context-menu {
+  all: revert !important;
+}
+
+// Scope all styles to prevent conflicts with Obsidian's UI
+// Use a very specific selector to ensure it only applies to our kanban view
+.workspace-leaf-content[data-type='markdown-kanban-view'] .simple-kanban,
+.view-content .simple-kanban {
   height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--background-primary);
   color: var(--text-normal);
   position: relative;
+
+  // Ensure our styles don't affect global elements
+  * {
+    box-sizing: border-box;
+  }
+
+  // Reset any potential global interference
+  input,
+  select,
+  textarea,
+  button {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+  }
 
   &::before {
     content: '';
@@ -651,8 +683,9 @@
   }
 }
 
-// Modal styles
-.modal {
+// Modal styles - scoped to kanban plugin
+.workspace-leaf-content[data-type='markdown-kanban-view'] .simple-kanban .modal,
+.view-content .simple-kanban .modal {
   position: fixed;
   top: 0;
   left: 0;
@@ -662,7 +695,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
+  z-index: 1000;
 
   .modal-content {
     background: var(--background-primary);
@@ -798,8 +831,9 @@
   }
 }
 
-// Modern Modal Overlay Styles
-.modal-overlay {
+// Modern Modal Overlay Styles - scoped to kanban plugin
+.workspace-leaf-content[data-type='markdown-kanban-view'] .simple-kanban .modal-overlay,
+.view-content .simple-kanban .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -809,7 +843,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 10000;
+  z-index: 1000;
   backdrop-filter: blur(4px);
   animation: fadeIn 0.2s ease;
 
@@ -997,15 +1031,16 @@
   }
 }
 
-// Context Menu Styles
-.context-menu {
+// Context Menu Styles - scoped to kanban plugin
+.workspace-leaf-content[data-type='markdown-kanban-view'] .simple-kanban .context-menu,
+.view-content .simple-kanban .context-menu {
   position: fixed !important;
   background: var(--background-primary) !important;
   border: 1px solid var(--background-modifier-border) !important;
   border-radius: 8px !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
   padding: 0.5rem 0 !important;
-  z-index: 999999 !important;
+  z-index: 10000 !important;
   min-width: 180px !important;
   backdrop-filter: blur(10px) !important;
   display: block !important;

@@ -95,10 +95,16 @@ export class MarkdownKanbanView extends ItemView {
     
     // Add a small delay to ensure DOM is fully rendered before attaching listeners
     setTimeout(() => {
-      this.addEventListeners(container);
-      this.addClickListeners(container);
-      this.initializeDragDrop(container);
-      this.addTestButton(container);
+      // Get the current container from the DOM (it might have been replaced)
+      const currentContainer = this.containerEl.children[1] as HTMLElement;
+      
+      // Initialize drag drop (this might replace the container)
+      const updatedContainer = this.initializeDragDrop(currentContainer);
+      
+      // Always attach event listeners to the current container in the DOM
+      // Reset the flag so we can attach listeners to the new container
+      updatedContainer.dataset.listenersAttached = 'false';
+      this.addEventListeners(updatedContainer);
     }, 10);
   }
 
@@ -107,7 +113,17 @@ export class MarkdownKanbanView extends ItemView {
     this.renderBoard(container);
   }
 
-  private initializeDragDrop(container: HTMLElement): void {
+  private refreshBoardContent(): void {
+    const container = this.containerEl.children[1] as HTMLElement;
+    const boardData = this.boardManager.getBoardData();
+    const cards = this.boardManager.getCards();
+    const initiatives = this.boardManager.getInitiatives();
+
+    // Just update the content without re-attaching event listeners
+    BoardRenderer.renderBoard(container, boardData, cards, initiatives);
+  }
+
+  private initializeDragDrop(container: HTMLElement): HTMLElement {
     // Clean up existing drag drop handler
     if (this.dragDropHandler) {
       // Remove old event listeners by creating a new container
@@ -125,99 +141,89 @@ export class MarkdownKanbanView extends ItemView {
 
     // Add drag and drop listeners
     this.dragDropHandler.addDragAndDropListeners(container);
+    
+    return container;
   }
 
   private addEventListeners(container: HTMLElement): void {
-    console.log('Adding event listeners to container:', container);
+    // Use event delegation for all event listeners
+    // This ensures they work even when DOM content is replaced
     
-    // Add listeners for column right-click context menus
-    const columns = container.querySelectorAll('.simple-kanban-column');
-    console.log('Found columns:', columns.length);
+    // Check if listeners are already attached to avoid duplicates
+    if (container.dataset.listenersAttached === 'true') {
+      return;
+    }
     
-    columns.forEach((column, index) => {
-      console.log(`Adding contextmenu listener to column ${index}:`, column);
-      column.addEventListener('contextmenu', (e) => {
-        console.log('Column contextmenu event triggered:', e);
+    // Mark that listeners have been attached
+    container.dataset.listenersAttached = 'true';
+    
+    // Handle column right-click context menus
+    container.addEventListener('contextmenu', (e) => {
+      const target = e.target as HTMLElement;
+      const column = target.closest('.simple-kanban-column');
+      if (column) {
         e.preventDefault();
         e.stopPropagation();
-        const columnId = (e.currentTarget as HTMLElement).dataset.columnId;
-        console.log('Column ID:', columnId);
+        const columnId = (column as HTMLElement).dataset.columnId;
         if (columnId) {
           this.showContextMenu(e as MouseEvent, 'column', undefined, columnId);
         }
-      });
+      }
     });
 
-    // Add listeners for swimlane toggles
-    container.querySelectorAll('.swimlane-header').forEach(header => {
-      header.addEventListener('click', (e) => {
+    // Handle swimlane toggles
+    container.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      const header = target.closest('.swimlane-header');
+      if (header) {
         e.stopPropagation();
         this.toggleSwimlane(header as HTMLElement);
-      });
+      }
     });
-  }
 
-  private addClickListeners(container: HTMLElement): void {
-    // Add click listeners for cards and initiatives (left click to edit)
-    const clickableElements = container.querySelectorAll('.clickable-card, .clickable-initiative');
-    console.log('Found clickable elements:', clickableElements.length);
-    
-    clickableElements.forEach(element => {
-      element.addEventListener('click', async (e) => {
+    // Handle card and initiative clicks (left click to edit)
+    container.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      const clickableElement = target.closest('.clickable-card, .clickable-initiative');
+      if (clickableElement) {
         e.stopPropagation();
-        const id = (e.currentTarget as HTMLElement).dataset.id;
-        const type = (e.currentTarget as HTMLElement).dataset.type;
+        const id = (clickableElement as HTMLElement).dataset.id;
+        const type = (clickableElement as HTMLElement).dataset.type;
         
         if (id && type) {
           if (type === 'card') {
-            await this.boardManager.editCard(id);
+            this.boardManager.editCard(id).then(() => {
+              // Just refresh the board without re-attaching event listeners
+              this.refreshBoardContent();
+            });
           } else if (type === 'initiative') {
-            await this.boardManager.editInitiative(id);
+            this.boardManager.editInitiative(id).then(() => {
+              // Just refresh the board without re-attaching event listeners
+              this.refreshBoardContent();
+            });
           }
-          this.refreshBoard();
         }
-      });
+      }
+    });
 
-      // Add right-click context menu listeners
-      element.addEventListener('contextmenu', (e) => {
-        console.log('Element contextmenu event triggered:', e);
+    // Handle card and initiative right-click context menus
+    container.addEventListener('contextmenu', (e) => {
+      const target = e.target as HTMLElement;
+      const clickableElement = target.closest('.clickable-card, .clickable-initiative');
+      if (clickableElement) {
         e.preventDefault();
         e.stopPropagation();
-        const id = (e.currentTarget as HTMLElement).dataset.id;
-        const type = (e.currentTarget as HTMLElement).dataset.type;
-        console.log('Element ID:', id, 'Type:', type);
+        const id = (clickableElement as HTMLElement).dataset.id;
+        const type = (clickableElement as HTMLElement).dataset.type;
         
         if (id && type) {
           this.showContextMenu(e as MouseEvent, type as 'card' | 'initiative', id);
         }
-      });
+      }
     });
   }
 
-  private addTestButton(_container: HTMLElement): void {
-    // Add a test button to debug context menu functionality
-    const testButton = document.createElement('button');
-    testButton.textContent = 'Test Context Menu';
-    testButton.style.position = 'fixed';
-    testButton.style.top = '10px';
-    testButton.style.right = '10px';
-    testButton.style.zIndex = '1000000';
-    testButton.style.padding = '10px';
-    testButton.style.background = 'var(--interactive-accent)';
-    testButton.style.color = 'var(--text-on-accent)';
-    testButton.style.border = 'none';
-    testButton.style.borderRadius = '4px';
-    testButton.style.cursor = 'pointer';
-    
-    testButton.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      console.log('Test button clicked, showing context menu');
-      this.showContextMenu(e as MouseEvent, 'column', undefined, 'test-column');
-    });
-    
-    document.body.appendChild(testButton);
-  }
+
 
   private toggleSwimlane(header: HTMLElement): void {
     // Find the swimlane container
@@ -235,12 +241,12 @@ export class MarkdownKanbanView extends ItemView {
 
   private createContextMenu(): HTMLElement {
     const menu = document.createElement('div');
-    menu.className = 'context-menu';
+    menu.className = 'context-menu kanban-context-menu';
     menu.style.display = 'block';
     menu.style.visibility = 'visible';
     menu.style.opacity = '1';
     menu.style.position = 'fixed';
-    menu.style.zIndex = '999999';
+    menu.style.zIndex = '10000';
     
     // Always append to document.body to ensure proper positioning
     document.body.appendChild(menu);
@@ -248,8 +254,6 @@ export class MarkdownKanbanView extends ItemView {
   }
 
   private showContextMenu(event: MouseEvent, type: 'card' | 'initiative' | 'column', id?: string, columnId?: string): void {
-    console.log('showContextMenu called:', { type, id, columnId, event });
-    
     event.preventDefault();
     event.stopPropagation();
 
@@ -338,14 +342,6 @@ export class MarkdownKanbanView extends ItemView {
     this.contextMenu.style.visibility = 'visible';
     this.contextMenu.style.opacity = '1';
     
-    console.log('Context menu positioned at:', { 
-      left: event.pageX, 
-      top: event.pageY, 
-      menuItems: menuItems.length,
-      menuElement: this.contextMenu,
-      menuHTML: this.contextMenu.innerHTML
-    });
-    
     // Force a reflow to ensure the menu is rendered
     this.contextMenu.offsetHeight;
 
@@ -380,49 +376,49 @@ export class MarkdownKanbanView extends ItemView {
       case 'edit-card':
         if (id) {
           await this.boardManager.editCard(id);
-          this.refreshBoard();
+          this.refreshBoardContent();
         }
         break;
       case 'edit-initiative':
         if (id) {
           await this.boardManager.editInitiative(id);
-          this.refreshBoard();
+          this.refreshBoardContent();
         }
         break;
       case 'delete-card':
         if (id) {
           await this.boardManager.deleteCard(id);
-          this.refreshBoard();
+          this.refreshBoardContent();
         }
         break;
       case 'delete-initiative':
         if (id) {
           await this.boardManager.deleteInitiative(id);
-          this.refreshBoard();
+          this.refreshBoardContent();
         }
         break;
       case 'archive-card':
         if (id) {
           await this.boardManager.archiveCard(id);
-          this.refreshBoard();
+          this.refreshBoardContent();
         }
         break;
       case 'archive-initiative':
         if (id) {
           await this.boardManager.archiveInitiative(id);
-          this.refreshBoard();
+          this.refreshBoardContent();
         }
         break;
       case 'add-card':
         if (columnId) {
           await this.boardManager.addCardToColumn(columnId);
-          this.refreshBoard();
+          this.refreshBoardContent();
         }
         break;
       case 'add-initiative':
         if (columnId) {
           await this.boardManager.addInitiativeToColumn(columnId);
-          this.refreshBoard();
+          this.refreshBoardContent();
         }
         break;
       case 'move-card':
@@ -493,7 +489,7 @@ export class MarkdownKanbanView extends ItemView {
           await this.boardManager.moveInitiativeToColumn(itemId, newColumnId);
         }
         
-        this.refreshBoard();
+        this.refreshBoardContent();
         closeModal();
       });
 
