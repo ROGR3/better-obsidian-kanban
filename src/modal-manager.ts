@@ -1,4 +1,5 @@
 import { ModalData } from './types';
+import { TagService } from './services/TagService';
 
 export class ModalManager {
   static async showInputModal(title: string, message: string, defaultValue: string = ''): Promise<string | null> {
@@ -122,7 +123,7 @@ export class ModalManager {
     });
   }
 
-  static async showCardModal(title: string, initialData: ModalData, availableCards: Array<{id: string, title: string}> = [], availableInitiatives: Array<{id: string, title: string}> = []): Promise<ModalData | null> {
+  static async showCardModal(title: string, initialData: ModalData, availableCards: Array<{id: string, title: string}> = [], availableInitiatives: Array<{id: string, title: string}> = [], allCards?: Map<string, any>, allInitiatives?: Map<string, any>): Promise<ModalData | null> {
     return new Promise((resolve) => {
       const modal = document.createElement('div');
       modal.className = 'modal-overlay kanban-modal-overlay';
@@ -152,7 +153,10 @@ export class ModalManager {
             </div>
             <div class="form-group">
               <label>Tags</label>
-              <input type="text" class="modal-input" id="card-tags" value="${initialData.tags?.join(', ') || ''}" placeholder="Enter tags separated by commas (e.g., #work, #urgent)">
+              <div class="tag-input-container">
+                <input type="text" class="modal-input" id="card-tags" value="${initialData.tags?.join(', ') || ''}" placeholder="Enter tags separated by commas (e.g., work, urgent)">
+                <div class="tag-suggestions" id="tag-suggestions" style="display: none;"></div>
+              </div>
             </div>
             <div class="form-group">
               <label>Link to Task</label>
@@ -182,10 +186,17 @@ export class ModalManager {
 
       document.body.appendChild(modal);
 
+      // Setup tag autocomplete
+      const tagsInput = modal.querySelector('#card-tags') as HTMLInputElement;
+      const suggestionsDiv = modal.querySelector('#tag-suggestions') as HTMLDivElement;
+      
+      if (tagsInput && suggestionsDiv && allCards && allInitiatives) {
+        this.setupTagAutocomplete(tagsInput, suggestionsDiv, allCards, allInitiatives);
+      }
+
       const titleInput = modal.querySelector('#card-title') as HTMLInputElement;
       const descriptionInput = modal.querySelector('#card-description') as HTMLTextAreaElement;
       const initiativeSelect = modal.querySelector('#card-initiative') as HTMLSelectElement;
-      const tagsInput = modal.querySelector('#card-tags') as HTMLInputElement;
       const linkedCardSelect = modal.querySelector('#card-linked-card') as HTMLSelectElement;
       const relationshipTypeSelect = modal.querySelector('#card-relationship-type') as HTMLSelectElement;
       const confirmBtn = modal.querySelector('.modal-confirm') as HTMLButtonElement;
@@ -347,5 +358,126 @@ export class ModalManager {
         }
       });
     });
+  }
+
+  private static setupTagAutocomplete(input: HTMLInputElement, suggestionsDiv: HTMLDivElement, allCards: Map<string, any>, allInitiatives: Map<string, any>): void {
+    let currentSuggestions: string[] = [];
+    let selectedIndex = -1;
+
+    const showSuggestions = (query: string) => {
+      if (query.length === 0) {
+        // Show popular tags when no query
+        currentSuggestions = TagService.getPopularTags(allCards, allInitiatives, 8);
+      } else {
+        // Show matching tags
+        currentSuggestions = TagService.getMatchingTags(allCards, allInitiatives, query);
+      }
+
+      if (currentSuggestions.length === 0) {
+        suggestionsDiv.style.display = 'none';
+        return;
+      }
+
+      suggestionsDiv.innerHTML = currentSuggestions
+        .map((tag, index) => `
+          <div class="tag-suggestion ${index === selectedIndex ? 'selected' : ''}" data-tag="${tag}">
+            ${TagService.formatTagForDisplay(tag)}
+          </div>
+        `).join('');
+      
+      suggestionsDiv.style.display = 'block';
+      selectedIndex = -1;
+    };
+
+    const hideSuggestions = () => {
+      setTimeout(() => {
+        suggestionsDiv.style.display = 'none';
+        selectedIndex = -1;
+      }, 150);
+    };
+
+    const selectSuggestion = (tag: string) => {
+      const currentValue = input.value;
+      const cursorPos = input.selectionStart || 0;
+      
+      // Find the current tag being typed (before cursor)
+      const beforeCursor = currentValue.substring(0, cursorPos);
+      const afterCursor = currentValue.substring(cursorPos);
+      
+      // Find the start of the current tag
+      const lastComma = beforeCursor.lastIndexOf(',');
+      const tagStart = lastComma === -1 ? 0 : lastComma + 1;
+      
+      // Replace the current tag with the selected one
+      const newValue = 
+        currentValue.substring(0, tagStart) + 
+        tag + 
+        (afterCursor.startsWith(',') ? '' : ', ') + 
+        afterCursor;
+      
+      input.value = newValue;
+      input.focus();
+      hideSuggestions();
+    };
+
+    input.addEventListener('input', (e) => {
+      const target = e.target as HTMLInputElement;
+      const cursorPos = target.selectionStart || 0;
+      const beforeCursor = target.value.substring(0, cursorPos);
+      const lastComma = beforeCursor.lastIndexOf(',');
+      const currentTag = beforeCursor.substring(lastComma + 1).trim();
+      
+      showSuggestions(currentTag);
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (suggestionsDiv.style.display === 'none') return;
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          selectedIndex = Math.min(selectedIndex + 1, currentSuggestions.length - 1);
+          updateSelection();
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          selectedIndex = Math.max(selectedIndex - 1, -1);
+          updateSelection();
+          break;
+        case 'Enter':
+        case 'Tab':
+          e.preventDefault();
+          if (selectedIndex >= 0 && currentSuggestions[selectedIndex]) {
+            selectSuggestion(currentSuggestions[selectedIndex]);
+          }
+          break;
+        case 'Escape':
+          hideSuggestions();
+          break;
+      }
+    });
+
+    input.addEventListener('blur', hideSuggestions);
+    input.addEventListener('focus', () => {
+      const currentTag = input.value.split(',').pop()?.trim() || '';
+      showSuggestions(currentTag);
+    });
+
+    suggestionsDiv.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.classList.contains('tag-suggestion')) {
+        const tag = target.getAttribute('data-tag');
+        if (tag) {
+          selectSuggestion(tag);
+        }
+      }
+    });
+
+    const updateSelection = () => {
+      const suggestions = suggestionsDiv.querySelectorAll('.tag-suggestion');
+      suggestions.forEach((suggestion, index) => {
+        suggestion.classList.toggle('selected', index === selectedIndex);
+      });
+    };
   }
 }

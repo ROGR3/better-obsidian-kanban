@@ -1089,3 +1089,46 @@ body .context-menu.kanban-context-menu {
     }
   }
 }
+
+// Tag Autocomplete Styles
+.workspace-leaf-content[data-type='markdown-kanban-view'] .simple-kanban .tag-input-container,
+.view-content .simple-kanban .tag-input-container,
+body .modal-overlay.kanban-modal-overlay .tag-input-container {
+  position: relative;
+}
+
+.workspace-leaf-content[data-type='markdown-kanban-view'] .simple-kanban .tag-suggestions,
+.view-content .simple-kanban .tag-suggestions,
+body .modal-overlay.kanban-modal-overlay .tag-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.workspace-leaf-content[data-type='markdown-kanban-view'] .simple-kanban .tag-suggestion,
+.view-content .simple-kanban .tag-suggestion,
+body .modal-overlay.kanban-modal-overlay .tag-suggestion {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  color: var(--text-normal);
+  border-bottom: 1px solid var(--background-modifier-border);
+  transition: background-color 0.2s ease;
+
+  &:hover,
+  &.selected {
+    background: var(--background-secondary);
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+}

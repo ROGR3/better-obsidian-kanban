@@ -118,6 +118,7 @@ export class BoardManager implements IBoardManager {
           initiative: card.metadata.initiative,
           predecessors: card.metadata.predecessors,
           successors: card.metadata.successors,
+          tags: card.metadata.tags || [],
           history: card.metadata.history || []
         });
       });
@@ -131,7 +132,8 @@ export class BoardManager implements IBoardManager {
           status: initiative.metadata.status,
           date: initiative.metadata.date,
           type: 'initiative',
-          description: initiative.metadata.description
+          description: initiative.metadata.description,
+          tags: initiative.metadata.tags || []
         });
       });
 
@@ -167,7 +169,7 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
       description: '',
       initiative: '',
       tags: []
-    }, availableCards, availableInitiatives);
+    }, availableCards, availableInitiatives, this.cards, this.initiatives);
     if (!cardData) return;
 
     const cardId = 'card_' + Date.now();
@@ -274,7 +276,7 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
       linkedCard: card.metadata.predecessors?.[0] || card.metadata.successors?.[0] || undefined,
       relationshipType: card.metadata.predecessors?.length ? 'predecessor' : 
                       card.metadata.successors?.length ? 'successor' : undefined
-    }, availableCards, availableInitiatives);
+    }, availableCards, availableInitiatives, this.cards, this.initiatives);
     if (!cardData) return;
 
     // Handle relationship changes
