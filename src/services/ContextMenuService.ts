@@ -13,7 +13,7 @@ export class ContextMenuService implements IContextMenuService {
     event.stopPropagation();
 
     this.hide();
-    this.createContextMenu(data);
+    this.createContextMenu(data, event);
     this.positionContextMenu(event);
     this.attachMenuEventListeners();
   }
@@ -29,7 +29,7 @@ export class ContextMenuService implements IContextMenuService {
     return this.contextMenu !== null;
   }
 
-  private createContextMenu(data: ContextMenuData): void {
+  private createContextMenu(data: ContextMenuData, event: MouseEvent): void {
     this.contextMenu = document.createElement('div');
     this.contextMenu.className = 'context-menu kanban-context-menu';
     
@@ -59,7 +59,7 @@ export class ContextMenuService implements IContextMenuService {
       pointer-events: auto !important;
     `;
     
-    const menuItems = this.generateMenuItems(data);
+    const menuItems = this.generateMenuItems(data, event);
     this.contextMenu.innerHTML = menuItems;
     document.body.appendChild(this.contextMenu);
   }
@@ -74,16 +74,16 @@ export class ContextMenuService implements IContextMenuService {
     this.contextMenu.offsetHeight;
   }
 
-  private generateMenuItems(data: ContextMenuData): string {
+  private generateMenuItems(data: ContextMenuData, event: MouseEvent): string {
     const { type, id, columnId } = data;
-
+    
     switch (type) {
       case 'card':
         return this.generateCardMenuItems(id!);
       case 'initiative':
         return this.generateInitiativeMenuItems(id!);
       case 'column':
-        return this.generateColumnMenuItems(columnId!);
+        return this.generateColumnMenuItems(columnId!, event);
       default:
         return '';
     }
@@ -93,19 +93,19 @@ export class ContextMenuService implements IContextMenuService {
     return `
       <div class="context-menu-item" data-action="edit-card" data-id="${cardId}">
         <span class="context-menu-icon">✏️</span>
-        Edit Card
+        Edit Task
       </div>
       <div class="context-menu-item" data-action="move-card" data-id="${cardId}">
         <span class="context-menu-icon">↔️</span>
-        Move Card
+        Move Task
       </div>
       <div class="context-menu-item" data-action="archive-card" data-id="${cardId}">
         <span class="context-menu-icon">📦</span>
-        Archive Card
+        Archive Task
       </div>
       <div class="context-menu-item danger" data-action="delete-card" data-id="${cardId}">
         <span class="context-menu-icon">🗑️</span>
-        Delete Card
+        Delete Task
       </div>
     `;
   }
@@ -131,17 +131,27 @@ export class ContextMenuService implements IContextMenuService {
     `;
   }
 
-  private generateColumnMenuItems(columnId: string): string {
-    return `
-      <div class="context-menu-item" data-action="add-card" data-column-id="${columnId}">
-        <span class="context-menu-icon">➕</span>
-        Add Card
-      </div>
-      <div class="context-menu-item" data-action="add-initiative" data-column-id="${columnId}">
-        <span class="context-menu-icon">📋</span>
-        Add Initiative
-      </div>
-    `;
+  private generateColumnMenuItems(columnId: string, event: MouseEvent): string {
+    // Determine if this is an initiative column or task column based on the swimlane
+    const target = event.target as HTMLElement;
+    const swimlane = target.closest('[data-swimlane]') as HTMLElement;
+    const swimlaneType = swimlane?.dataset.swimlane;
+    
+    if (swimlaneType === 'initiatives') {
+      return `
+        <div class="context-menu-item" data-action="add-initiative" data-column-id="${columnId}">
+          <span class="context-menu-icon">📋</span>
+          Add Initiative
+        </div>
+      `;
+    } else {
+      return `
+        <div class="context-menu-item" data-action="add-card" data-column-id="${columnId}">
+          <span class="context-menu-icon">➕</span>
+          Add Task
+        </div>
+      `;
+    }
   }
 
   private attachMenuEventListeners(): void {

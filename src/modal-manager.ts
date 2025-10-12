@@ -135,7 +135,7 @@ export class ModalManager {
           <div class="modal-body">
             <div class="form-group">
               <label>Title *</label>
-              <input type="text" class="modal-input" id="card-title" value="${initialData.title}" placeholder="Enter card title">
+              <input type="text" class="modal-input" id="card-title" value="${initialData.title}" placeholder="Enter task title">
             </div>
             <div class="form-group">
               <label>Description</label>
@@ -155,7 +155,7 @@ export class ModalManager {
               <input type="text" class="modal-input" id="card-tags" value="${initialData.tags?.join(', ') || ''}" placeholder="Enter tags separated by commas (e.g., #work, #urgent)">
             </div>
             <div class="form-group">
-              <label>Link to Card</label>
+              <label>Link to Task</label>
               <select class="modal-select" id="card-linked-card">
                 <option value="">None</option>
                 ${availableCards.map(card => 

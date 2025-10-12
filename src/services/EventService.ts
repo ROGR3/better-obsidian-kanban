@@ -23,11 +23,14 @@ export class EventService implements IEventService {
     // Mark that listeners have been attached
     container.dataset.listenersAttached = 'true';
 
-    // Handle column right-click context menus
+    // Handle column right-click context menus (only when not clicking on items)
     this.addEventHandler(container, 'contextmenu', (e: Event) => {
       const target = (e.target as HTMLElement);
       const column = target.closest('.simple-kanban-column');
-      if (column) {
+      const item = target.closest('.clickable-card, .clickable-initiative');
+      
+      // Only show column menu if clicking on column but not on an item
+      if (column && !item) {
         e.preventDefault();
         e.stopPropagation();
         const columnId = (column as HTMLElement).dataset.columnId;

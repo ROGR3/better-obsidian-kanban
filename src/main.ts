@@ -60,7 +60,7 @@ settings: {
 
 # Kanban Board
 
-This is your kanban board. Cards and initiatives will appear here when you add them.`;
+This is your kanban board. Tasks and initiatives will appear here when you add them.`;
 
       await this.app.vault.modify(kanban, frontmatter);
       await this.app.workspace.getLeaf().setViewState({
