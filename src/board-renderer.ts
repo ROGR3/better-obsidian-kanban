@@ -233,10 +233,10 @@ export class BoardRenderer implements IBoardRenderer {
     const statusMap: { [key: string]: string } = {
       'backlog': 'backlog',
       'Backlog': 'backlog',
+      'committed': 'committed',
+      'Committed': 'committed',
       'in-progress': 'in-progress',
       'In Progress': 'in-progress',
-      'review': 'review',
-      'Review': 'review',
       'done': 'done',
       'Done': 'done',
       'completed': 'done',

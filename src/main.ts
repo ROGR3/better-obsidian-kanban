@@ -1,7 +1,5 @@
 import { around } from 'monkey-around';
 import {
-  MarkdownView,
-  Platform,
   Plugin,
   TFile,
   TFolder,
@@ -36,10 +34,10 @@ export default class KanbanPlugin extends Plugin {
   async newKanbanBoardMd(folder?: TFolder) {
     const targetFolder = folder
       ? folder
-      : this.app.fileManager.getNewFileParent(app.workspace.getActiveFile()?.path || '');
+      : this.app.fileManager.getNewFileParent(this.app.workspace.getActiveFile()?.path || '');
 
     try {
-      const kanban: TFile = await (app.fileManager as any).createNewMarkdownFile(
+      const kanban: TFile = await (this.app.fileManager as any).createNewMarkdownFile(
         targetFolder,
         'kanban-board'
       );
@@ -48,8 +46,8 @@ export default class KanbanPlugin extends Plugin {
 kanban-plugin: board
 columns: [
   {"id": "backlog", "title": "Backlog", "order": 0, "color": "#8B5CF6"},
-  {"id": "in-progress", "title": "In Progress", "order": 1, "color": "#3B82F6"},
-  {"id": "review", "title": "Review", "order": 2, "color": "#F59E0B"},
+  {"id": "committed", "title": "Committed", "order": 1, "color": "#6366F1"},
+  {"id": "in-progress", "title": "In Progress", "order": 2, "color": "#3B82F6"},
   {"id": "done", "title": "Done", "order": 3, "color": "#10B981"}
 ]
 items: []
@@ -76,7 +74,7 @@ This is your kanban board. Cards and initiatives will appear here when you add t
 
   registerEvents() {
     this.registerEvent(
-      this.app.workspace.on('file-menu', (menu, file, source, leaf) => {
+      this.app.workspace.on('file-menu', (menu, file, source) => {
         if (source === 'link-context-menu') return;
 
         const fileIsFolder = file instanceof TFolder;
@@ -130,25 +128,27 @@ This is your kanban board. Cards and initiatives will appear here when you add t
               self._loaded &&
               // If we have a markdown file
               state.type === 'markdown' &&
-              state.state?.file &&
-              // And the current mode of the file is not set to markdown
-              self.kanbanFileModes[this.id || state.state.file] !== 'markdown'
+              state.state?.file
             ) {
               // Check for kanban-board.md files or files with kanban frontmatter
-              const cache = self.app.metadataCache.getCache(state.state.file);
-              const isKanbanBoardFile = state.state.file.endsWith('kanban-board.md');
-              const hasNewKanbanFrontmatter = cache?.frontmatter && cache.frontmatter['kanban-plugin'] === 'board';
+              const filePath = state.state.file as string;
+              
+              if (self.kanbanFileModes[this.id || filePath] !== 'markdown') {
+                const cache = self.app.metadataCache.getCache(filePath);
+                const isKanbanBoardFile = filePath.endsWith('kanban-board.md');
+                const hasNewKanbanFrontmatter = cache?.frontmatter && cache.frontmatter['kanban-plugin'] === 'board';
 
-              if (isKanbanBoardFile || hasNewKanbanFrontmatter) {
-                // If we have a kanban-board.md file or new frontmatter, force the view type to markdown kanban
-                const newState = {
-                  ...state,
-                  type: MARKDOWN_KANBAN_VIEW_TYPE,
-                };
+                if (isKanbanBoardFile || hasNewKanbanFrontmatter) {
+                  // If we have a kanban-board.md file or new frontmatter, force the view type to markdown kanban
+                  const newState = {
+                    ...state,
+                    type: MARKDOWN_KANBAN_VIEW_TYPE,
+                  };
 
-                self.kanbanFileModes[state.state.file] = MARKDOWN_KANBAN_VIEW_TYPE;
+                  self.kanbanFileModes[filePath] = MARKDOWN_KANBAN_VIEW_TYPE;
 
-                return next.apply(this, [newState, ...rest]);
+                  return next.apply(this, [newState, ...rest]);
+                }
               }
             }
 

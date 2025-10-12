@@ -30,6 +30,7 @@ copy:
 # Clean build artifacts
 clean:
     rm -f main.js styles.css
+    rm -rf out/
 
 # Show help
 help:

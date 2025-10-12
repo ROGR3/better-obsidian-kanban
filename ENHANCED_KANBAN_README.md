@@ -96,14 +96,14 @@ The `board.json` file defines columns and settings:
 {
   "columns": [
     { "id": "backlog", "title": "Backlog", "color": "#8b5cf6", "order": 0 },
-    { "id": "in-progress", "title": "In Progress", "color": "#3b82f6", "order": 1 },
-    { "id": "review", "title": "Review", "color": "#f59e0b", "order": 2 },
+    { "id": "committed", "title": "Committed", "color": "#6366f1", "order": 1 },
+    { "id": "in-progress", "title": "In Progress", "color": "#3b82f6", "order": 2 },
     { "id": "done", "title": "Done", "color": "#10b981", "order": 3 }
   ],
   "settings": {
     "wip_limits": {
-      "in-progress": 5,
-      "review": 3
+      "committed": 8,
+      "in-progress": 5
     },
     "dependency_rules": {
       "enforce_predecessors": true,

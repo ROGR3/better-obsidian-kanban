@@ -103,12 +103,23 @@ const renamePlugin = {
   name: 'rename-styles',
   setup(build) {
     build.onEnd(() => {
-      const { outfile } = build.initialOptions;
-      const outcss = outfile.replace(/\.js$/, '.css');
-      const fixcss = outfile.replace(/main\.js$/, 'styles.css');
+      // Rename CSS file to styles.css
+      const outcss = './styles/simple-kanban.css';
+      const fixcss = './styles.css';
       if (fs.existsSync(outcss)) {
         console.log('Renaming', outcss, 'to', fixcss);
         fs.renameSync(outcss, fixcss);
+        // Remove the empty styles directory
+        try {
+          fs.rmdirSync('./styles/');
+        } catch (e) {
+          // Directory not empty or other error, ignore
+        }
+      }
+
+      // JavaScript file should already be named main.js
+      if (fs.existsSync('./main.js')) {
+        console.log('JavaScript file: main.js');
       }
     });
   },
@@ -209,6 +220,7 @@ const context = await esbuild.context({
   plugins: [
     NodeModulesPolyfillPlugin(),
     lessLoader(),
+    renamePlugin,
     replace({
       include: /node_modules\/.*/,
       values: {
