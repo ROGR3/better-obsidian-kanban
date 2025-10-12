@@ -32,13 +32,35 @@ export class ContextMenuService implements IContextMenuService {
   private createContextMenu(data: ContextMenuData): void {
     this.contextMenu = document.createElement('div');
     this.contextMenu.className = 'context-menu kanban-context-menu';
-    this.contextMenu.style.display = 'block';
-    this.contextMenu.style.visibility = 'visible';
-    this.contextMenu.style.opacity = '1';
-    this.contextMenu.style.position = 'fixed';
-    this.contextMenu.style.zIndex = '10000';
     
-    this.contextMenu.innerHTML = this.generateMenuItems(data);
+    // Use inline styles to ensure visibility
+    this.contextMenu.style.cssText = `
+      position: fixed !important;
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      z-index: 10000 !important;
+      background: var(--background-primary) !important;
+      border: 1px solid var(--background-modifier-border) !important;
+      border-radius: 8px !important;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
+      padding: 0.5rem 0 !important;
+      min-width: 180px !important;
+      backdrop-filter: blur(10px) !important;
+      width: auto !important;
+      height: auto !important;
+      max-width: none !important;
+      max-height: none !important;
+      overflow: visible !important;
+      clip: none !important;
+      clip-path: none !important;
+      transform: none !important;
+      filter: none !important;
+      pointer-events: auto !important;
+    `;
+    
+    const menuItems = this.generateMenuItems(data);
+    this.contextMenu.innerHTML = menuItems;
     document.body.appendChild(this.contextMenu);
   }
 

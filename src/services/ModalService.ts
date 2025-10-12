@@ -13,7 +13,7 @@ export class ModalService {
     ).join('');
 
     const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
+    modal.className = 'modal-overlay kanban-modal-overlay';
     modal.innerHTML = `
       <div class="modal-panel">
         <div class="modal-header">
@@ -65,7 +65,7 @@ export class ModalService {
 
   static async showConfirmModal(title: string, message: string): Promise<boolean> {
     const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
+    modal.className = 'modal-overlay kanban-modal-overlay';
     modal.innerHTML = `
       <div class="modal-panel">
         <div class="modal-header">

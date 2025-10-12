@@ -151,6 +151,11 @@ export class MarkdownKanbanView extends ItemView {
       const initiatives = this.boardManager.getInitiatives();
 
       this.boardService.refreshBoardContent(container, boardData, cards, initiatives);
+      
+      // Re-attach event listeners after content refresh
+      setTimeout(() => {
+        this.eventService.attachEventListeners(container);
+      }, 10);
     } catch (error) {
       console.error('Error refreshing board content:', error);
     }

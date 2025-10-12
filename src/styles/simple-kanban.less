@@ -1,15 +1,17 @@
 // Prevent our styles from affecting other parts of Obsidian
 // Reset any potential global interference when our view is not active
+// Only reset modals that are NOT created by our plugin
 body:not(.workspace-leaf-content[data-type='markdown-kanban-view']) {
-  .modal,
-  .modal-overlay {
+  .modal:not(.kanban-modal),
+  .modal-overlay:not(.kanban-modal-overlay) {
     all: unset !important;
   }
 }
 
 // Context menu should not be reset when it has the kanban context class
 body .context-menu.kanban-context-menu {
-  all: revert !important;
+  // Don't use all: revert as it might override our specific styles
+  // Just ensure it's not affected by the reset rules
 }
 
 // Scope all styles to prevent conflicts with Obsidian's UI
@@ -833,7 +835,8 @@ body .context-menu.kanban-context-menu {
 
 // Modern Modal Overlay Styles - scoped to kanban plugin
 .workspace-leaf-content[data-type='markdown-kanban-view'] .simple-kanban .modal-overlay,
-.view-content .simple-kanban .modal-overlay {
+.view-content .simple-kanban .modal-overlay,
+body .modal-overlay.kanban-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -1033,7 +1036,8 @@ body .context-menu.kanban-context-menu {
 
 // Context Menu Styles - scoped to kanban plugin
 .workspace-leaf-content[data-type='markdown-kanban-view'] .simple-kanban .context-menu,
-.view-content .simple-kanban .context-menu {
+.view-content .simple-kanban .context-menu,
+body .context-menu.kanban-context-menu {
   position: fixed !important;
   background: var(--background-primary) !important;
   border: 1px solid var(--background-modifier-border) !important;
@@ -1046,6 +1050,16 @@ body .context-menu.kanban-context-menu {
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: none !important;
+  max-height: none !important;
+  overflow: visible !important;
+  clip: none !important;
+  clip-path: none !important;
+  transform: none !important;
+  filter: none !important;
+  pointer-events: auto !important;
 
   .context-menu-item {
     display: flex;

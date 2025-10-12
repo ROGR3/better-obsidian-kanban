@@ -4,7 +4,7 @@ export class ModalManager {
   static async showInputModal(title: string, message: string, defaultValue: string = ''): Promise<string | null> {
     return new Promise((resolve) => {
       const modal = document.createElement('div');
-      modal.className = 'modal-overlay';
+      modal.className = 'modal-overlay kanban-modal-overlay';
       modal.innerHTML = `
         <div class="modal-panel">
           <div class="modal-header">
@@ -73,7 +73,7 @@ export class ModalManager {
   static async showConfirmModal(title: string, message: string): Promise<boolean> {
     return new Promise((resolve) => {
       const modal = document.createElement('div');
-      modal.className = 'modal-overlay';
+      modal.className = 'modal-overlay kanban-modal-overlay';
       modal.innerHTML = `
         <div class="modal-panel">
           <div class="modal-header">
@@ -125,7 +125,7 @@ export class ModalManager {
   static async showCardModal(title: string, initialData: ModalData, availableCards: Array<{id: string, title: string}> = [], availableInitiatives: Array<{id: string, title: string}> = []): Promise<ModalData | null> {
     return new Promise((resolve) => {
       const modal = document.createElement('div');
-      modal.className = 'modal-overlay';
+      modal.className = 'modal-overlay kanban-modal-overlay';
       modal.innerHTML = `
         <div class="modal-panel">
           <div class="modal-header">
@@ -255,7 +255,7 @@ export class ModalManager {
   static async showInitiativeModal(title: string, initialData: ModalData): Promise<ModalData | null> {
     return new Promise((resolve) => {
       const modal = document.createElement('div');
-      modal.className = 'modal-overlay';
+      modal.className = 'modal-overlay kanban-modal-overlay';
       modal.innerHTML = `
         <div class="modal-panel">
           <div class="modal-header">
