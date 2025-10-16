@@ -3,7 +3,7 @@ import { BoardData, BoardColumn, Card, Initiative, IBoardRenderer } from './type
 export class BoardRenderer implements IBoardRenderer {
   showNoBoardMessage(container: HTMLElement): void {
     container.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 2rem; text-align: center;">
+      <div class="better-kanban-board" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 2rem; text-align: center;">
         <h2 style="color: var(--text-muted); margin-bottom: 1rem;">No Kanban Board Selected</h2>
         <p style="color: var(--text-muted); margin-bottom: 2rem;">Create a new kanban board or open an existing one.</p>
         <button id="create-board-btn" class="btn-primary" style="padding: 0.75rem 1.5rem; border-radius: 8px;">
@@ -21,7 +21,7 @@ export class BoardRenderer implements IBoardRenderer {
 
     // Columns are rendered within each swimlane
     container.innerHTML = `
-      <div class="simple-kanban">
+      <div class="better-kanban-board simple-kanban">
         <div class="simple-kanban-swimlanes">
           <div class="simple-kanban-swimlane">
             <div class="swimlane-header" data-swimlane="initiatives">

@@ -1,20 +1,8 @@
-// Prevent our styles from affecting other parts of Obsidian
-// Reset any potential global interference when our view is not active
-// Only reset modals that are NOT created by our plugin
-body:not(.workspace-leaf-content[data-type='markdown-kanban-view']) {
-  .modal:not(.kanban-modal),
-  .modal-overlay:not(.kanban-modal-overlay) {
-    all: unset !important;
-  }
-}
-
-// Context menu should not be reset when it has the kanban context class
-// This rule ensures the context menu is not affected by global resets
-
-// Scope all styles to prevent conflicts with Obsidian's UI
-// Use a very specific selector to ensure it only applies to our kanban view
-.workspace-leaf-content[data-type='markdown-kanban-view'] .simple-kanban,
-.view-content .simple-kanban {
+// Wrap everything under .better-kanban-board for complete isolation
+// Using .better-kanban-board.simple-kanban since both classes are on the same element
+.better-kanban-board.simple-kanban,
+.workspace-leaf-content[data-type='markdown-kanban-view'] .better-kanban-board.simple-kanban,
+.view-content .better-kanban-board.simple-kanban {
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -688,149 +676,148 @@ body:not(.workspace-leaf-content[data-type='markdown-kanban-view']) {
       cursor: pointer;
     }
   }
-}
 
-// Modal styles - scoped to kanban plugin
-.workspace-leaf-content[data-type='markdown-kanban-view'] .simple-kanban .modal,
-.view-content .simple-kanban .modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+  // Modal styles - scoped to kanban plugin (nested inside simple-kanban)
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
 
-  .modal-content {
-    background: var(--background-primary);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 8px;
-    padding: 1.5rem;
-    min-width: 300px;
-    max-width: 500px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-
-    h3 {
-      margin: 0 0 1rem 0;
-      color: var(--text-normal);
-    }
-
-    p {
-      margin: 0 0 1rem 0;
-      color: var(--text-muted);
-    }
-
-    input,
-    select,
-    textarea {
-      width: 100%;
-      padding: 0.5rem;
-      border: 1px solid var(--background-modifier-border);
-      border-radius: 4px;
+    .modal-content {
       background: var(--background-primary);
-      color: var(--text-normal);
-      font-size: 1rem;
-      margin-bottom: 1rem;
+      border: 1px solid var(--background-modifier-border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      min-width: 300px;
+      max-width: 500px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 
-      &:focus {
-        outline: none;
-        border-color: var(--interactive-accent);
-        box-shadow: 0 0 0 2px hsla(var(--interactive-accent-hsl), 0.3);
+      h3 {
+        margin: 0 0 1rem 0;
+        color: var(--text-normal);
       }
-    }
 
-    textarea {
-      min-height: 80px;
-      resize: vertical;
-    }
+      p {
+        margin: 0 0 1rem 0;
+        color: var(--text-muted);
+      }
 
-    &.enhanced-modal {
-      min-width: 400px;
-      max-width: 600px;
-
-      .form-group {
+      input,
+      select,
+      textarea {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid var(--background-modifier-border);
+        border-radius: 4px;
+        background: var(--background-primary);
+        color: var(--text-normal);
+        font-size: 1rem;
         margin-bottom: 1rem;
 
-        label {
-          display: block;
-          margin-bottom: 0.5rem;
-          font-weight: 600;
-          color: var(--text-normal);
+        &:focus {
+          outline: none;
+          border-color: var(--interactive-accent);
+          box-shadow: 0 0 0 2px hsla(var(--interactive-accent-hsl), 0.3);
         }
       }
 
-      .modal-textarea {
-        width: 100%;
-        padding: 0.5rem;
-        border: 1px solid var(--background-modifier-border);
-        border-radius: 4px;
-        background: var(--background-primary);
-        color: var(--text-normal);
-        font-family: inherit;
-        font-size: 14px;
-        resize: vertical;
+      textarea {
         min-height: 80px;
-
-        &:focus {
-          outline: none;
-          border-color: var(--interactive-accent);
-          box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
-        }
+        resize: vertical;
       }
 
-      .modal-select {
-        width: 100%;
-        padding: 0.5rem;
-        border: 1px solid var(--background-modifier-border);
-        border-radius: 4px;
-        background: var(--background-primary);
-        color: var(--text-normal);
-        font-family: inherit;
-        font-size: 14px;
-        cursor: pointer;
+      &.enhanced-modal {
+        min-width: 400px;
+        max-width: 600px;
 
-        &:focus {
-          outline: none;
-          border-color: var(--interactive-accent);
-          box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
+        .form-group {
+          margin-bottom: 1rem;
+
+          label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-normal);
+          }
         }
 
-        option {
+        .modal-textarea {
+          width: 100%;
           padding: 0.5rem;
+          border: 1px solid var(--background-modifier-border);
+          border-radius: 4px;
           background: var(--background-primary);
           color: var(--text-normal);
+          font-family: inherit;
+          font-size: 14px;
+          resize: vertical;
+          min-height: 80px;
+
+          &:focus {
+            outline: none;
+            border-color: var(--interactive-accent);
+            box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
+          }
+        }
+
+        .modal-select {
+          width: 100%;
+          padding: 0.5rem;
+          border: 1px solid var(--background-modifier-border);
+          border-radius: 4px;
+          background: var(--background-primary);
+          color: var(--text-normal);
+          font-family: inherit;
+          font-size: 14px;
+          cursor: pointer;
+
+          &:focus {
+            outline: none;
+            border-color: var(--interactive-accent);
+            box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
+          }
+
+          option {
+            padding: 0.5rem;
+            background: var(--background-primary);
+            color: var(--text-normal);
+          }
         }
       }
-    }
 
-    .modal-actions {
-      display: flex;
-      gap: 0.5rem;
-      justify-content: flex-end;
+      .modal-actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
 
-      button {
-        padding: 0.5rem 1rem;
-        border: 1px solid var(--background-modifier-border);
-        border-radius: 4px;
-        background: var(--background-secondary);
-        color: var(--text-normal);
-        cursor: pointer;
-        font-size: 0.9rem;
-
-        &:hover {
-          background: var(--background-modifier-hover);
-        }
-
-        &#ok-btn {
-          background: var(--interactive-accent);
-          color: var(--text-on-accent);
-          border-color: var(--interactive-accent);
+        button {
+          padding: 0.5rem 1rem;
+          border: 1px solid var(--background-modifier-border);
+          border-radius: 4px;
+          background: var(--background-secondary);
+          color: var(--text-normal);
+          cursor: pointer;
+          font-size: 0.9rem;
 
           &:hover {
-            background: var(--interactive-accent-hover);
+            background: var(--background-modifier-hover);
+          }
+
+          &#ok-btn {
+            background: var(--interactive-accent);
+            color: var(--text-on-accent);
+            border-color: var(--interactive-accent);
+
+            &:hover {
+              background: var(--interactive-accent-hover);
+            }
           }
         }
       }
@@ -839,8 +826,7 @@ body:not(.workspace-leaf-content[data-type='markdown-kanban-view']) {
 }
 
 // Modern Modal Overlay Styles - scoped to kanban plugin
-.workspace-leaf-content[data-type='markdown-kanban-view'] .simple-kanban .modal-overlay,
-.view-content .simple-kanban .modal-overlay,
+// These are outside the wrapper since they're appended to body
 body .modal-overlay.kanban-modal-overlay {
   position: fixed;
   top: 0;
@@ -1053,7 +1039,7 @@ body .modal-overlay.kanban-modal-overlay {
 
 // Responsive design
 @media (max-width: 768px) {
-  .simple-kanban {
+  .better-kanban-board.simple-kanban {
     .simple-kanban-board {
       flex-direction: column;
       gap: 0.5rem;
@@ -1071,8 +1057,7 @@ body .modal-overlay.kanban-modal-overlay {
 }
 
 // Context Menu Styles - scoped to kanban plugin
-.workspace-leaf-content[data-type='markdown-kanban-view'] .simple-kanban .context-menu,
-.view-content .simple-kanban .context-menu,
+// These are outside the wrapper since they're appended to body
 body .context-menu.kanban-context-menu {
   position: fixed !important;
   background: var(--background-primary) !important;
@@ -1130,14 +1115,11 @@ body .context-menu.kanban-context-menu {
 }
 
 // Tag Autocomplete Styles
-.workspace-leaf-content[data-type='markdown-kanban-view'] .simple-kanban .tag-input-container,
-.view-content .simple-kanban .tag-input-container,
+// These can be inside modals which are appended to body
 body .modal-overlay.kanban-modal-overlay .tag-input-container {
   position: relative;
 }
 
-.workspace-leaf-content[data-type='markdown-kanban-view'] .simple-kanban .tag-suggestions,
-.view-content .simple-kanban .tag-suggestions,
 body .modal-overlay.kanban-modal-overlay .tag-suggestions {
   position: absolute;
   top: 100%;
@@ -1153,8 +1135,6 @@ body .modal-overlay.kanban-modal-overlay .tag-suggestions {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.workspace-leaf-content[data-type='markdown-kanban-view'] .simple-kanban .tag-suggestion,
-.view-content .simple-kanban .tag-suggestion,
 body .modal-overlay.kanban-modal-overlay .tag-suggestion {
   padding: 0.5rem 0.75rem;
   cursor: pointer;
