@@ -1,20 +1,19 @@
 import { Card, Initiative } from './types';
+import { DOMUtils } from './dom-utils';
 
 export class DragDropHandler {
-  private onMoveCard: (cardId: string, newColumnId: string) => Promise<void>;
-  private onMoveInitiative: (initiativeId: string, newColumnId: string) => Promise<void>;
-  private onDragEnd: () => void;
+  private onMoveCard: (cardId: string, newColumnId: string, sourceColumnId: string) => Promise<void>;
+  private onMoveInitiative: (initiativeId: string, newColumnId: string, sourceColumnId: string) => Promise<void>;
   private draggedElement: HTMLElement | null = null;
   private dragOverColumn: HTMLElement | null = null;
+  private sourceColumnId: string | null = null;
 
   constructor(
-    onMoveCard: (cardId: string, newColumnId: string) => Promise<void>,
-    onMoveInitiative: (initiativeId: string, newColumnId: string) => Promise<void>,
-    onDragEnd: () => void
+    onMoveCard: (cardId: string, newColumnId: string, sourceColumnId: string) => Promise<void>,
+    onMoveInitiative: (initiativeId: string, newColumnId: string, sourceColumnId: string) => Promise<void>
   ) {
     this.onMoveCard = onMoveCard;
     this.onMoveInitiative = onMoveInitiative;
-    this.onDragEnd = onDragEnd;
   }
 
   addDragAndDropListeners(container: HTMLElement): void {
@@ -33,6 +32,10 @@ export class DragDropHandler {
     this.draggedElement = target;
     target.classList.add('dragging');
     
+    // Store source column ID
+    const sourceColumn = target.closest('.simple-kanban-column') as HTMLElement;
+    this.sourceColumnId = sourceColumn?.dataset.columnId || null;
+    
     // Set drag data
     if (e.dataTransfer) {
       e.dataTransfer.effectAllowed = 'move';
@@ -50,9 +53,9 @@ export class DragDropHandler {
     this.clearDragOverStates();
     this.draggedElement = null;
     this.dragOverColumn = null;
+    this.sourceColumnId = null;
     
-    // Refresh board
-    this.onDragEnd();
+    // No need to refresh board - DOM updates happen in handleDrop
   }
 
   private handleDragOver(e: DragEvent): void {
@@ -92,28 +95,54 @@ export class DragDropHandler {
     e.preventDefault();
     
     const target = e.target as HTMLElement;
-    const column = target.closest('.simple-kanban-column') as HTMLElement;
+    const targetColumn = target.closest('.simple-kanban-column') as HTMLElement;
     
-    if (!column || !this.draggedElement) return;
+    if (!targetColumn || !this.draggedElement) return;
     
     const draggedId = e.dataTransfer?.getData('text/plain');
     const itemType = e.dataTransfer?.getData('item-type') as 'card' | 'initiative';
-    const columnId = column.dataset.columnId;
+    const targetColumnId = targetColumn.dataset.columnId;
     
-    if (!draggedId || !itemType || !columnId) return;
+    if (!draggedId || !itemType || !targetColumnId || !this.sourceColumnId) return;
+    
+    // Don't do anything if dropped in the same column
+    if (this.sourceColumnId === targetColumnId) {
+      this.clearDragOverStates();
+      return;
+    }
+    
+    // Get the container for DOM manipulation
+    const container = targetColumn.closest('.better-kanban-board') as HTMLElement;
+    if (!container) return;
+    
+    // Move the item in the DOM first (optimistic update)
+    const moved = DOMUtils.moveItemBetweenColumns(
+      draggedId,
+      itemType,
+      this.sourceColumnId,
+      targetColumnId,
+      container
+    );
+    
+    if (!moved) {
+      console.warn('Failed to move item in DOM');
+      this.clearDragOverStates();
+      return;
+    }
     
     // Clean up drag states
     this.clearDragOverStates();
     
-    // Move the item
+    // Update the backend
     try {
       if (itemType === 'card') {
-        await this.onMoveCard(draggedId, columnId);
+        await this.onMoveCard(draggedId, targetColumnId, this.sourceColumnId);
       } else if (itemType === 'initiative') {
-        await this.onMoveInitiative(draggedId, columnId);
+        await this.onMoveInitiative(draggedId, targetColumnId, this.sourceColumnId);
       }
     } catch (error) {
-      console.error('Error moving item:', error);
+      console.error('Error saving item move:', error);
+      // Could implement rollback here if needed
     }
   }
 

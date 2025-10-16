@@ -167,9 +167,32 @@ export class MarkdownKanbanView extends ItemView {
   // Event handlers
   private async handleCardClick(id: string): Promise<void> {
     try {
+      const cardBefore = this.boardManager.getCards().get(id);
       await this.boardManager.editCard(id);
-      // Only refresh if the modal was actually used (not cancelled)
-      this.refreshBoardContent();
+      const cardAfter = this.boardManager.getCards().get(id);
+      
+      if (!cardAfter) return; // Card was deleted or modal was cancelled
+      
+      // Check if card moved to a different column
+      const statusChanged = cardBefore && 
+        this.normalizeStatus(cardBefore.metadata.status) !== this.normalizeStatus(cardAfter.metadata.status);
+      
+      if (statusChanged) {
+        // If status changed, do a full refresh (but preserve scroll)
+        this.refreshBoardContent();
+      } else {
+        // Otherwise, just update the card in place
+        const container = this.boardService.getContainer(this.containerEl);
+        const updated = this.boardService.updateCard(id, cardAfter, this.boardManager.getCards(), container);
+        
+        if (!updated) {
+          // Fallback to full refresh if targeted update failed
+          this.refreshBoardContent();
+        } else {
+          // Re-attach event listeners for the updated card
+          this.eventService.attachEventListeners(container);
+        }
+      }
     } catch (error) {
       console.error('Error handling card click:', error);
       this.showError('Failed to edit card');
@@ -178,13 +201,53 @@ export class MarkdownKanbanView extends ItemView {
 
   private async handleInitiativeClick(id: string): Promise<void> {
     try {
+      const initiativeBefore = this.boardManager.getInitiatives().get(id);
       await this.boardManager.editInitiative(id);
-      // Only refresh if the modal was actually used (not cancelled)
-      this.refreshBoardContent();
+      const initiativeAfter = this.boardManager.getInitiatives().get(id);
+      
+      if (!initiativeAfter) return; // Initiative was deleted or modal was cancelled
+      
+      // Check if initiative moved to a different column
+      const statusChanged = initiativeBefore && 
+        this.normalizeStatus(initiativeBefore.metadata.status) !== this.normalizeStatus(initiativeAfter.metadata.status);
+      
+      if (statusChanged) {
+        // If status changed, do a full refresh (but preserve scroll)
+        this.refreshBoardContent();
+      } else {
+        // Otherwise, just update the initiative in place
+        const container = this.boardService.getContainer(this.containerEl);
+        const updated = this.boardService.updateInitiative(id, initiativeAfter, container);
+        
+        if (!updated) {
+          // Fallback to full refresh if targeted update failed
+          this.refreshBoardContent();
+        } else {
+          // Re-attach event listeners for the updated initiative
+          this.eventService.attachEventListeners(container);
+        }
+      }
     } catch (error) {
       console.error('Error handling initiative click:', error);
       this.showError('Failed to edit initiative');
     }
+  }
+
+  private normalizeStatus(status: string): string {
+    const statusMap: { [key: string]: string } = {
+      'backlog': 'backlog',
+      'Backlog': 'backlog',
+      'committed': 'committed',
+      'Committed': 'committed',
+      'in-progress': 'in-progress',
+      'In Progress': 'in-progress',
+      'done': 'done',
+      'Done': 'done',
+      'completed': 'done',
+      'Completed': 'done'
+    };
+    
+    return statusMap[status] || status.toLowerCase().replace(/\s+/g, '-');
   }
 
   private handleColumnRightClick(columnId: string, event: MouseEvent): void {
@@ -345,11 +408,12 @@ export class MarkdownKanbanView extends ItemView {
         container = newContainer;
       }
 
-      // Create new drag drop handler
+      // Create new drag drop handler with targeted updates (no full refresh)
       this.dragDropHandler = new DragDropHandler(
-        (cardId: string, newColumnId: string) => this.boardManager.moveCardToColumn(cardId, newColumnId),
-        (initiativeId: string, newColumnId: string) => this.boardManager.moveInitiativeToColumn(initiativeId, newColumnId),
-        () => this.refreshBoard()
+        (cardId: string, newColumnId: string) => 
+          this.boardManager.moveCardToColumn(cardId, newColumnId),
+        (initiativeId: string, newColumnId: string) => 
+          this.boardManager.moveInitiativeToColumn(initiativeId, newColumnId)
       );
 
       // Add drag and drop listeners

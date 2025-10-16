@@ -260,4 +260,13 @@ export class BoardRenderer implements IBoardRenderer {
       return 0;
     }
   }
+
+  // Public methods for targeted updates
+  renderCardHTML(card: Card, allCards: Map<string, Card>): string {
+    return this.renderCard(card, allCards);
+  }
+
+  renderInitiativeHTML(initiative: Initiative): string {
+    return this.renderInitiative(initiative);
+  }
 }
