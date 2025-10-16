@@ -2,19 +2,57 @@ import { ModalData } from './types';
 import { TagService } from './services/TagService';
 
 export class ModalManager {
+  private static activeModals: Set<HTMLElement> = new Set();
+  private static originalBodyOverflow: string = '';
+
+  private static preventBodyScroll(): void {
+    this.originalBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+  }
+
+  private static restoreBodyScroll(): void {
+    if (this.activeModals.size === 0) {
+      document.body.style.overflow = this.originalBodyOverflow;
+    }
+  }
+
+  private static addModal(modal: HTMLElement): void {
+    this.activeModals.add(modal);
+    this.preventBodyScroll();
+  }
+
+  private static removeModal(modal: HTMLElement): void {
+    this.activeModals.delete(modal);
+    this.restoreBodyScroll();
+  }
+
+  static cleanup(): void {
+    // Clean up all active modals
+    this.activeModals.forEach(modal => {
+      if ((modal as any).cleanup) {
+        (modal as any).cleanup();
+      }
+    });
+    this.activeModals.clear();
+    this.restoreBodyScroll();
+  }
+
   static async showInputModal(title: string, message: string, defaultValue: string = ''): Promise<string | null> {
     return new Promise((resolve) => {
       const modal = document.createElement('div');
       modal.className = 'modal-overlay kanban-modal-overlay';
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-modal', 'true');
+      modal.setAttribute('aria-labelledby', 'modal-title');
       modal.innerHTML = `
         <div class="modal-panel">
           <div class="modal-header">
-            <h3>${title}</h3>
-            <button class="modal-close">&times;</button>
+            <h3 id="modal-title">${title}</h3>
+            <button class="modal-close" aria-label="Close modal">&times;</button>
           </div>
           <div class="modal-body">
             <p>${message}</p>
-            <input type="text" class="modal-input" id="modal-input" value="${defaultValue}" placeholder="Enter value">
+            <input type="text" class="modal-input" id="modal-input" value="${defaultValue}" placeholder="Enter value" aria-describedby="modal-description">
           </div>
           <div class="modal-footer">
             <button class="btn-secondary modal-cancel">Cancel</button>
@@ -24,6 +62,7 @@ export class ModalManager {
       `;
 
       document.body.appendChild(modal);
+      this.addModal(modal);
 
       const input = modal.querySelector('#modal-input') as HTMLInputElement;
       const confirmBtn = modal.querySelector('.modal-confirm') as HTMLButtonElement;
@@ -31,7 +70,10 @@ export class ModalManager {
       const closeBtn = modal.querySelector('.modal-close') as HTMLButtonElement;
 
       const cleanup = () => {
-        document.body.removeChild(modal);
+        if (document.body.contains(modal)) {
+          document.body.removeChild(modal);
+        }
+        this.removeModal(modal);
       };
 
       const handleConfirm = () => {
@@ -45,29 +87,46 @@ export class ModalManager {
         resolve(null);
       };
 
-      confirmBtn.addEventListener('click', handleConfirm);
-      cancelBtn.addEventListener('click', handleCancel);
-      closeBtn.addEventListener('click', handleCancel);
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) handleCancel();
+      // Event listeners
+      const eventListeners: Array<{element: HTMLElement, event: string, handler: EventListener}> = [
+        { element: confirmBtn, event: 'click', handler: handleConfirm },
+        { element: cancelBtn, event: 'click', handler: handleCancel },
+        { element: closeBtn, event: 'click', handler: handleCancel },
+        { element: modal, event: 'click', handler: (e) => {
+          if (e.target === modal) handleCancel();
+        }},
+        { element: input, event: 'keydown', handler: (e) => {
+          const keyEvent = e as KeyboardEvent;
+          if (keyEvent.key === 'Enter') {
+            e.preventDefault();
+            handleConfirm();
+          } else if (keyEvent.key === 'Escape') {
+            e.preventDefault();
+            handleCancel();
+          }
+        }}
+      ];
+
+      // Add all event listeners
+      eventListeners.forEach(({ element, event, handler }) => {
+        element.addEventListener(event, handler);
       });
 
-      // Focus input after a short delay
-      setTimeout(() => {
-        input.focus();
-        input.select();
-      }, 100);
-
-      // Handle Enter key
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          handleConfirm();
-        } else if (e.key === 'Escape') {
-          e.preventDefault();
-          handleCancel();
+      // Store cleanup function for proper cleanup
+      (modal as any).cleanup = () => {
+        eventListeners.forEach(({ element, event, handler }) => {
+          element.removeEventListener(event, handler);
+        });
+        // Clean up resize handler
+        if ((modal as any).resizeHandler) {
+          window.removeEventListener('resize', (modal as any).resizeHandler);
         }
-      });
+        cleanup();
+      };
+
+      // Focus input immediately
+      input.focus();
+      input.select();
     });
   }
 
@@ -75,11 +134,14 @@ export class ModalManager {
     return new Promise((resolve) => {
       const modal = document.createElement('div');
       modal.className = 'modal-overlay kanban-modal-overlay';
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-modal', 'true');
+      modal.setAttribute('aria-labelledby', 'modal-title');
       modal.innerHTML = `
         <div class="modal-panel">
           <div class="modal-header">
-            <h3>${title}</h3>
-            <button class="modal-close">&times;</button>
+            <h3 id="modal-title">${title}</h3>
+            <button class="modal-close" aria-label="Close modal">&times;</button>
           </div>
           <div class="modal-body">
             <p>${message}</p>
@@ -92,13 +154,17 @@ export class ModalManager {
       `;
 
       document.body.appendChild(modal);
+      this.addModal(modal);
 
       const confirmBtn = modal.querySelector('.modal-confirm') as HTMLButtonElement;
       const cancelBtn = modal.querySelector('.modal-cancel') as HTMLButtonElement;
       const closeBtn = modal.querySelector('.modal-close') as HTMLButtonElement;
 
       const cleanup = () => {
-        document.body.removeChild(modal);
+        if (document.body.contains(modal)) {
+          document.body.removeChild(modal);
+        }
+        this.removeModal(modal);
       };
 
       const handleConfirm = () => {
@@ -111,15 +177,42 @@ export class ModalManager {
         resolve(false);
       };
 
-      confirmBtn.addEventListener('click', handleConfirm);
-      cancelBtn.addEventListener('click', handleCancel);
-      closeBtn.addEventListener('click', handleCancel);
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) handleCancel();
+      // Event listeners
+      const eventListeners: Array<{element: HTMLElement, event: string, handler: EventListener}> = [
+        { element: confirmBtn, event: 'click', handler: handleConfirm },
+        { element: cancelBtn, event: 'click', handler: handleCancel },
+        { element: closeBtn, event: 'click', handler: handleCancel },
+        { element: modal, event: 'click', handler: (e) => {
+          if (e.target === modal) handleCancel();
+        }},
+        { element: modal, event: 'keydown', handler: (e) => {
+          const keyEvent = e as KeyboardEvent;
+          if (keyEvent.key === 'Escape') {
+            e.preventDefault();
+            handleCancel();
+          }
+        }}
+      ];
+
+      // Add all event listeners
+      eventListeners.forEach(({ element, event, handler }) => {
+        element.addEventListener(event, handler);
       });
 
-      // Focus confirm button
-      setTimeout(() => confirmBtn.focus(), 100);
+      // Store cleanup function for proper cleanup
+      (modal as any).cleanup = () => {
+        eventListeners.forEach(({ element, event, handler }) => {
+          element.removeEventListener(event, handler);
+        });
+        // Clean up resize handler
+        if ((modal as any).resizeHandler) {
+          window.removeEventListener('resize', (modal as any).resizeHandler);
+        }
+        cleanup();
+      };
+
+      // Focus confirm button immediately
+      confirmBtn.focus();
     });
   }
 
@@ -127,23 +220,28 @@ export class ModalManager {
     return new Promise((resolve) => {
       const modal = document.createElement('div');
       modal.className = 'modal-overlay kanban-modal-overlay';
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-modal', 'true');
+      modal.setAttribute('aria-labelledby', 'modal-title');
+      
+      // Build modal structure efficiently with minimal DOM operations
       modal.innerHTML = `
         <div class="modal-panel">
           <div class="modal-header">
-            <h3>${title}</h3>
-            <button class="modal-close">&times;</button>
+            <h3 id="modal-title">${title}</h3>
+            <button class="modal-close" aria-label="Close modal">&times;</button>
           </div>
           <div class="modal-body">
             <div class="form-group">
-              <label>Title *</label>
-              <input type="text" class="modal-input" id="card-title" value="${initialData.title}" placeholder="Enter task title">
+              <label for="card-title">Title *</label>
+              <input type="text" class="modal-input" id="card-title" value="${initialData.title}" placeholder="Enter task title" required>
             </div>
             <div class="form-group">
-              <label>Description</label>
+              <label for="card-description">Description</label>
               <textarea class="modal-textarea" id="card-description" placeholder="Enter description">${initialData.description}</textarea>
             </div>
             <div class="form-group">
-              <label>Initiative</label>
+              <label for="card-initiative">Initiative</label>
               <select class="modal-select" id="card-initiative">
                 <option value="">None</option>
                 ${availableInitiatives.map(initiative => 
@@ -152,14 +250,14 @@ export class ModalManager {
               </select>
             </div>
             <div class="form-group">
-              <label>Tags</label>
+              <label for="card-tags">Tags</label>
               <div class="tag-input-container">
-                <input type="text" class="modal-input" id="card-tags" value="${initialData.tags?.join(', ') || ''}" placeholder="Enter tags separated by commas (e.g., work, urgent)">
+                <input type="text" class="modal-input" id="card-tags" value="${initialData.tags?.join(', ') || ''}" placeholder="Enter tags separated by commas">
                 <div class="tag-suggestions" id="tag-suggestions" style="display: none;"></div>
               </div>
             </div>
             <div class="form-group">
-              <label>Link to Task</label>
+              <label for="card-linked-card">Link to Task</label>
               <select class="modal-select" id="card-linked-card">
                 <option value="">None</option>
                 ${availableCards.map(card => 
@@ -168,7 +266,7 @@ export class ModalManager {
               </select>
             </div>
             <div class="form-group">
-              <label>Relationship Type</label>
+              <label for="card-relationship-type">Relationship Type</label>
               <select class="modal-select" id="card-relationship-type">
                 <option value="">None</option>
                 <option value="sibling" ${initialData.relationshipType === 'sibling' ? 'selected' : ''}>Sibling</option>
@@ -183,14 +281,17 @@ export class ModalManager {
           </div>
         </div>
       `;
-
+      
       document.body.appendChild(modal);
+      this.addModal(modal);
 
-      // Setup tag autocomplete
+      // Setup lightweight tag autocomplete only for small datasets
       const tagsInput = modal.querySelector('#card-tags') as HTMLInputElement;
       const suggestionsDiv = modal.querySelector('#tag-suggestions') as HTMLDivElement;
       
-      if (tagsInput && suggestionsDiv && allCards && allInitiatives) {
+      // Only enable autocomplete for datasets under 500 items to maintain performance
+      const totalItems = (allCards?.size || 0) + (allInitiatives?.size || 0);
+      if (tagsInput && suggestionsDiv && allCards && allInitiatives && totalItems < 500) {
         this.setupTagAutocomplete(tagsInput, suggestionsDiv, allCards, allInitiatives);
       }
 
@@ -204,13 +305,18 @@ export class ModalManager {
       const closeBtn = modal.querySelector('.modal-close') as HTMLButtonElement;
 
       const cleanup = () => {
-        document.body.removeChild(modal);
+        if (document.body.contains(modal)) {
+          document.body.removeChild(modal);
+        }
+        this.removeModal(modal);
       };
 
       const handleConfirm = () => {
         const title = titleInput.value.trim();
         if (!title) {
           titleInput.focus();
+          titleInput.style.borderColor = 'var(--text-error)';
+          titleInput.style.boxShadow = '0 0 0 2px rgba(var(--text-error-rgb), 0.2)';
           return;
         }
         
@@ -225,7 +331,7 @@ export class ModalManager {
           initiative: initiativeSelect.value || undefined,
           tags: tags,
           linkedCard: linkedCardSelect.value || undefined,
-          relationshipType: relationshipTypeSelect.value || undefined
+          relationshipType: (relationshipTypeSelect.value as 'sibling' | 'predecessor' | 'successor') || undefined
         };
         
         cleanup();
@@ -237,29 +343,56 @@ export class ModalManager {
         resolve(null);
       };
 
-      confirmBtn.addEventListener('click', handleConfirm);
-      cancelBtn.addEventListener('click', handleCancel);
-      closeBtn.addEventListener('click', handleCancel);
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) handleCancel();
+      // Event listeners
+      const eventListeners: Array<{element: HTMLElement, event: string, handler: EventListener}> = [
+        { element: confirmBtn, event: 'click', handler: handleConfirm },
+        { element: cancelBtn, event: 'click', handler: handleCancel },
+        { element: closeBtn, event: 'click', handler: handleCancel },
+        { element: modal, event: 'click', handler: (e) => {
+          if (e.target === modal) handleCancel();
+        }},
+        { element: titleInput, event: 'keydown', handler: (e) => {
+          const keyEvent = e as KeyboardEvent;
+          if (keyEvent.key === 'Enter') {
+            e.preventDefault();
+            handleConfirm();
+          } else if (keyEvent.key === 'Escape') {
+            e.preventDefault();
+            handleCancel();
+          }
+        }},
+        { element: titleInput, event: 'input', handler: () => {
+          // Reset error styling on input - only if there's an error to clear
+          if (titleInput.style.borderColor === 'var(--text-error)') {
+            titleInput.style.borderColor = '';
+            titleInput.style.boxShadow = '';
+          }
+        }},
+        { element: modal, event: 'keydown', handler: (e) => {
+          const keyEvent = e as KeyboardEvent;
+          if (keyEvent.key === 'Escape') {
+            e.preventDefault();
+            handleCancel();
+          }
+        }}
+      ];
+
+      // Add all event listeners
+      eventListeners.forEach(({ element, event, handler }) => {
+        element.addEventListener(event, handler);
       });
 
-      // Focus title input after a short delay
-      setTimeout(() => {
-        titleInput.focus();
-        titleInput.select();
-      }, 100);
+      // Store cleanup function for proper cleanup
+      (modal as any).cleanup = () => {
+        eventListeners.forEach(({ element, event, handler }) => {
+          element.removeEventListener(event, handler);
+        });
+        cleanup();
+      };
 
-      // Handle Enter key
-      titleInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          handleConfirm();
-        } else if (e.key === 'Escape') {
-          e.preventDefault();
-          handleCancel();
-        }
-      });
+      // Focus title input immediately
+      titleInput.focus();
+      titleInput.select();
     });
   }
 
@@ -267,23 +400,26 @@ export class ModalManager {
     return new Promise((resolve) => {
       const modal = document.createElement('div');
       modal.className = 'modal-overlay kanban-modal-overlay';
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-modal', 'true');
+      modal.setAttribute('aria-labelledby', 'modal-title');
       modal.innerHTML = `
         <div class="modal-panel">
           <div class="modal-header">
-            <h3>${title}</h3>
-            <button class="modal-close">&times;</button>
+            <h3 id="modal-title">${title}</h3>
+            <button class="modal-close" aria-label="Close modal">&times;</button>
           </div>
           <div class="modal-body">
             <div class="form-group">
-              <label>Title *</label>
-              <input type="text" class="modal-input" id="initiative-title" value="${initialData.title}" placeholder="Enter initiative title">
+              <label for="initiative-title">Title *</label>
+              <input type="text" class="modal-input" id="initiative-title" value="${initialData.title}" placeholder="Enter initiative title" required>
             </div>
             <div class="form-group">
-              <label>Description</label>
+              <label for="initiative-description">Description</label>
               <textarea class="modal-textarea" id="initiative-description" placeholder="Enter description">${initialData.description}</textarea>
             </div>
             <div class="form-group">
-              <label>Tags</label>
+              <label for="initiative-tags">Tags</label>
               <input type="text" class="modal-input" id="initiative-tags" value="${initialData.tags?.join(', ') || ''}" placeholder="Enter tags separated by commas (e.g., #work, #urgent)">
             </div>
           </div>
@@ -295,6 +431,7 @@ export class ModalManager {
       `;
 
       document.body.appendChild(modal);
+      this.addModal(modal);
 
       const titleInput = modal.querySelector('#initiative-title') as HTMLInputElement;
       const descriptionInput = modal.querySelector('#initiative-description') as HTMLTextAreaElement;
@@ -304,13 +441,18 @@ export class ModalManager {
       const closeBtn = modal.querySelector('.modal-close') as HTMLButtonElement;
 
       const cleanup = () => {
-        document.body.removeChild(modal);
+        if (document.body.contains(modal)) {
+          document.body.removeChild(modal);
+        }
+        this.removeModal(modal);
       };
 
       const handleConfirm = () => {
         const title = titleInput.value.trim();
         if (!title) {
           titleInput.focus();
+          titleInput.style.borderColor = 'var(--text-error)';
+          titleInput.style.boxShadow = '0 0 0 2px rgba(var(--text-error-rgb), 0.2)';
           return;
         }
         
@@ -334,62 +476,101 @@ export class ModalManager {
         resolve(null);
       };
 
-      confirmBtn.addEventListener('click', handleConfirm);
-      cancelBtn.addEventListener('click', handleCancel);
-      closeBtn.addEventListener('click', handleCancel);
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) handleCancel();
+      // Event listeners
+      const eventListeners: Array<{element: HTMLElement, event: string, handler: EventListener}> = [
+        { element: confirmBtn, event: 'click', handler: handleConfirm },
+        { element: cancelBtn, event: 'click', handler: handleCancel },
+        { element: closeBtn, event: 'click', handler: handleCancel },
+        { element: modal, event: 'click', handler: (e) => {
+          if (e.target === modal) handleCancel();
+        }},
+        { element: titleInput, event: 'keydown', handler: (e) => {
+          const keyEvent = e as KeyboardEvent;
+          if (keyEvent.key === 'Enter') {
+            e.preventDefault();
+            handleConfirm();
+          } else if (keyEvent.key === 'Escape') {
+            e.preventDefault();
+            handleCancel();
+          }
+        }},
+        { element: titleInput, event: 'input', handler: () => {
+          // Reset error styling on input - only if there's an error to clear
+          if (titleInput.style.borderColor === 'var(--text-error)') {
+            titleInput.style.borderColor = '';
+            titleInput.style.boxShadow = '';
+          }
+        }},
+        { element: modal, event: 'keydown', handler: (e) => {
+          const keyEvent = e as KeyboardEvent;
+          if (keyEvent.key === 'Escape') {
+            e.preventDefault();
+            handleCancel();
+          }
+        }}
+      ];
+
+      // Add all event listeners
+      eventListeners.forEach(({ element, event, handler }) => {
+        element.addEventListener(event, handler);
       });
 
-      // Focus title input after a short delay
-      setTimeout(() => {
-        titleInput.focus();
-        titleInput.select();
-      }, 100);
+      // Store cleanup function for proper cleanup
+      (modal as any).cleanup = () => {
+        eventListeners.forEach(({ element, event, handler }) => {
+          element.removeEventListener(event, handler);
+        });
+        cleanup();
+      };
 
-      // Handle Enter key
-      titleInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          handleConfirm();
-        } else if (e.key === 'Escape') {
-          e.preventDefault();
-          handleCancel();
-        }
-      });
+      // Focus title input immediately
+      titleInput.focus();
+      titleInput.select();
     });
   }
 
   private static setupTagAutocomplete(input: HTMLInputElement, suggestionsDiv: HTMLDivElement, allCards: Map<string, any>, allInitiatives: Map<string, any>): void {
     let currentSuggestions: string[] = [];
     let selectedIndex = -1;
+    let debounceTimer: number | null = null;
 
     const showSuggestions = (query: string) => {
-      if (query.length === 0) {
-        // Show popular tags when no query
-        currentSuggestions = TagService.getPopularTags(allCards, allInitiatives, 8);
-      } else {
-        // Show matching tags
-        currentSuggestions = TagService.getMatchingTags(allCards, allInitiatives, query);
+      // Clear previous debounce timer
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
       }
 
-      if (currentSuggestions.length === 0) {
-        suggestionsDiv.style.display = 'none';
-        return;
-      }
+      // Debounce the search to avoid excessive calls
+      debounceTimer = window.setTimeout(() => {
+        if (query.length === 0) {
+          // Show popular tags when no query
+          currentSuggestions = TagService.getPopularTags(allCards, allInitiatives, 5);
+        } else {
+          // Show matching tags
+          currentSuggestions = TagService.getMatchingTags(allCards, allInitiatives, query);
+        }
 
-      suggestionsDiv.innerHTML = currentSuggestions
-        .map((tag, index) => `
-          <div class="tag-suggestion ${index === selectedIndex ? 'selected' : ''}" data-tag="${tag}">
-            ${TagService.formatTagForDisplay(tag)}
-          </div>
-        `).join('');
-      
-      suggestionsDiv.style.display = 'block';
-      selectedIndex = -1;
+        if (currentSuggestions.length === 0) {
+          suggestionsDiv.style.display = 'none';
+          return;
+        }
+
+        // Use innerHTML for better performance on small lists
+        suggestionsDiv.innerHTML = currentSuggestions
+          .map((tag, index) => 
+            `<div class="tag-suggestion ${index === selectedIndex ? 'selected' : ''}" data-tag="${tag}">${TagService.formatTagForDisplay(tag)}</div>`
+          ).join('');
+        
+        suggestionsDiv.style.display = 'block';
+        selectedIndex = -1;
+      }, 300); // Increased debounce to 300ms for better performance
     };
 
     const hideSuggestions = () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+      }
       setTimeout(() => {
         suggestionsDiv.style.display = 'none';
         selectedIndex = -1;

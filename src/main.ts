@@ -7,6 +7,7 @@ import {
   WorkspaceLeaf,
 } from 'obsidian';
 import { MarkdownKanbanView, MARKDOWN_KANBAN_VIEW_TYPE } from './MarkdownKanbanView';
+import { ModalManager } from './modal-manager';
 
 export default class KanbanPlugin extends Plugin {
   // leafid => view mode
@@ -15,6 +16,7 @@ export default class KanbanPlugin extends Plugin {
 
   onunload() {
     this.kanbanFileModes = {};
+    ModalManager.cleanup();
   }
 
   async onload() {

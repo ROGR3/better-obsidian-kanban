@@ -277,6 +277,7 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
       relationshipType: card.metadata.predecessors?.length ? 'predecessor' : 
                       card.metadata.successors?.length ? 'successor' : undefined
     }, availableCards, availableInitiatives, this.cards, this.initiatives);
+    
     if (!cardData) return;
 
     // Handle relationship changes

@@ -150,12 +150,15 @@ export class MarkdownKanbanView extends ItemView {
       const cards = this.boardManager.getCards();
       const initiatives = this.boardManager.getInitiatives();
 
-      this.boardService.refreshBoardContent(container, boardData, cards, initiatives);
-      
-      // Re-attach event listeners after content refresh
-      setTimeout(() => {
-        this.eventService.attachEventListeners(container);
-      }, 10);
+      // Use requestAnimationFrame for better performance
+      requestAnimationFrame(() => {
+        this.boardService.refreshBoardContent(container, boardData, cards, initiatives);
+        
+        // Re-attach event listeners after content refresh
+        requestAnimationFrame(() => {
+          this.eventService.attachEventListeners(container);
+        });
+      });
     } catch (error) {
       console.error('Error refreshing board content:', error);
     }
@@ -165,6 +168,7 @@ export class MarkdownKanbanView extends ItemView {
   private async handleCardClick(id: string): Promise<void> {
     try {
       await this.boardManager.editCard(id);
+      // Only refresh if the modal was actually used (not cancelled)
       this.refreshBoardContent();
     } catch (error) {
       console.error('Error handling card click:', error);
@@ -174,7 +178,8 @@ export class MarkdownKanbanView extends ItemView {
 
   private async handleInitiativeClick(id: string): Promise<void> {
     try {
-            await this.boardManager.editInitiative(id);
+      await this.boardManager.editInitiative(id);
+      // Only refresh if the modal was actually used (not cancelled)
       this.refreshBoardContent();
     } catch (error) {
       console.error('Error handling initiative click:', error);

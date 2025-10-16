@@ -22,6 +22,10 @@ body:not(.workspace-leaf-content[data-type='markdown-kanban-view']) {
   color: var(--text-normal);
   position: relative;
 
+  // Performance optimizations
+  will-change: transform;
+  contain: layout style paint;
+
   // Ensure our styles don't affect global elements
   * {
     box-sizing: border-box;
@@ -314,6 +318,10 @@ body:not(.workspace-leaf-content[data-type='markdown-kanban-view']) {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     user-select: none;
     backdrop-filter: blur(10px);
+
+    // Performance optimizations
+    will-change: transform;
+    contain: layout style;
 
     &:hover {
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -843,9 +851,13 @@ body .modal-overlay.kanban-modal-overlay {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 10000;
+
+  // Performance optimizations
+  will-change: opacity;
+  contain: layout style paint;
   backdrop-filter: blur(4px);
-  animation: fadeIn 0.2s ease;
+  overflow: hidden;
 
   .modal-panel {
     background: var(--background-primary);
@@ -855,8 +867,9 @@ body .modal-overlay.kanban-modal-overlay {
     max-height: 90vh;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     border: 1px solid var(--background-modifier-border);
-    animation: slideUp 0.3s ease;
     overflow: hidden;
+    position: relative;
+    transform: translateZ(0); // Force hardware acceleration
 
     .modal-header {
       padding: 1.5rem 2rem 1rem;
@@ -925,7 +938,6 @@ body .modal-overlay.kanban-modal-overlay {
           background: var(--background-primary);
           color: var(--text-normal);
           font-size: 0.95rem;
-          transition: all 0.2s ease;
           z-index: 1;
           position: relative;
 
@@ -938,6 +950,16 @@ body .modal-overlay.kanban-modal-overlay {
 
           &:hover {
             border-color: var(--interactive-accent-hover);
+          }
+
+          &:invalid,
+          &.error {
+            border-color: var(--text-error);
+            box-shadow: 0 0 0 2px rgba(var(--text-error-rgb), 0.2);
+          }
+
+          &:valid:not(:placeholder-shown) {
+            border-color: var(--text-success);
           }
         }
 
@@ -966,10 +988,29 @@ body .modal-overlay.kanban-modal-overlay {
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
 
         &:hover {
           background: var(--interactive-accent-hover);
           transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(var(--interactive-accent-rgb), 0.3);
+        }
+
+        &:active {
+          transform: translateY(0);
+          box-shadow: 0 2px 6px rgba(var(--interactive-accent-rgb), 0.3);
+        }
+
+        &:focus {
+          outline: none;
+          box-shadow: 0 0 0 3px hsla(var(--interactive-accent-hsl), 0.3);
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
         }
       }
 
@@ -982,33 +1023,31 @@ body .modal-overlay.kanban-modal-overlay {
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
 
         &:hover {
           background: var(--background-modifier-hover);
           color: var(--text-normal);
+          border-color: var(--interactive-accent);
+        }
+
+        &:active {
+          transform: translateY(1px);
+        }
+
+        &:focus {
+          outline: none;
+          border-color: var(--interactive-accent);
+          box-shadow: 0 0 0 2px hsla(var(--interactive-accent-hsl), 0.2);
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
       }
     }
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 

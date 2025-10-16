@@ -19,9 +19,7 @@ export class BoardRenderer implements IBoardRenderer {
       return;
     }
 
-
     // Columns are rendered within each swimlane
-
     container.innerHTML = `
       <div class="simple-kanban">
         <div class="simple-kanban-swimlanes">
@@ -172,30 +170,35 @@ export class BoardRenderer implements IBoardRenderer {
     const description = card.content ? 
       `<div class="card-description">${card.content}</div>` : '';
 
-    // Relationship indicators
+    // Relationship indicators - only show if there are relationships
     const predecessors = card.metadata.predecessors || [];
     const successors = card.metadata.successors || [];
     
     let relationshipInfo = '';
     if (predecessors.length > 0) {
-      const predTitles = predecessors.map(id => {
+      const predTitles = predecessors.slice(0, 2).map(id => {
         const predCard = allCards.get(id);
         return predCard ? predCard.metadata.title : 'Unknown';
       }).join(', ');
-      relationshipInfo += `<div class="card-relationship predecessors">⬅️ Depends on: ${predTitles}</div>`;
+      const moreCount = predecessors.length > 2 ? ` +${predecessors.length - 2} more` : '';
+      relationshipInfo += `<div class="card-relationship predecessors">⬅️ Depends on: ${predTitles}${moreCount}</div>`;
     }
     if (successors.length > 0) {
-      const succTitles = successors.map(id => {
+      const succTitles = successors.slice(0, 2).map(id => {
         const succCard = allCards.get(id);
         return succCard ? succCard.metadata.title : 'Unknown';
       }).join(', ');
-      relationshipInfo += `<div class="card-relationship successors">➡️ Blocks: ${succTitles}</div>`;
+      const moreCount = successors.length > 2 ? ` +${successors.length - 2} more` : '';
+      relationshipInfo += `<div class="card-relationship successors">➡️ Blocks: ${succTitles}${moreCount}</div>`;
     }
-
-    // Archive button is handled in the context menu
 
     // Calculate days since creation
     const daysSinceCreation = this.calculateDaysSinceCreation(card.metadata.date);
+
+    // Limit tags display for performance
+    const displayTags = card.metadata.tags?.slice(0, 5) || [];
+    const moreTagsCount = (card.metadata.tags?.length || 0) - displayTags.length;
+    const moreTagsText = moreTagsCount > 0 ? `<span class="tag-more">+${moreTagsCount}</span>` : '';
 
     return `
       <div class="simple-kanban-card clickable-card draggable-item" 
@@ -214,7 +217,7 @@ export class BoardRenderer implements IBoardRenderer {
         ${relationshipInfo}
         <div class="card-meta">
           <div class="tags">
-            ${card.metadata.tags?.map(tag => `<span class="tag">${tag}</span>`).join('') || ''}
+            ${displayTags.map(tag => `<span class="tag">${tag}</span>`).join('')}${moreTagsText}
           </div>
         </div>
       </div>
