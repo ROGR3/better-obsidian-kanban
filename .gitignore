@@ -17,3 +17,4 @@ main.js
 styles.css
 justfile
 .vscode/
+*.zip
