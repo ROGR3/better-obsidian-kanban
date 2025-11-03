@@ -139,7 +139,7 @@ export class BoardManager implements IBoardManager {
 
       // Create new frontmatter
       const newFrontmatter = `---
-kanban-plugin: board
+better-kanban-plugin: board
 columns: ${JSON.stringify(this.boardData?.columns || [])}
 items: ${JSON.stringify(items)}
 settings: ${JSON.stringify(this.boardData?.settings || {})}

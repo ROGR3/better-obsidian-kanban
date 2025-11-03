@@ -45,7 +45,7 @@ export default class KanbanPlugin extends Plugin {
       );
 
       const frontmatter = `---
-kanban-plugin: board
+better-kanban-plugin: board
 columns: [
   {"id": "backlog", "title": "Backlog", "order": 0, "color": "#8B5CF6"},
   {"id": "committed", "title": "Committed", "order": 1, "color": "#6366F1"},
@@ -138,7 +138,7 @@ This is your kanban board. Tasks and initiatives will appear here when you add t
               if (self.kanbanFileModes[this.id || filePath] !== 'markdown') {
                 const cache = self.app.metadataCache.getCache(filePath);
                 const isKanbanBoardFile = filePath.endsWith('kanban-board.md');
-                const hasNewKanbanFrontmatter = cache?.frontmatter && cache.frontmatter['kanban-plugin'] === 'board';
+                const hasNewKanbanFrontmatter = cache?.frontmatter && cache.frontmatter['better-kanban-plugin'] === 'board';
 
                 if (isKanbanBoardFile || hasNewKanbanFrontmatter) {
                   // If we have a kanban-board.md file or new frontmatter, force the view type to markdown kanban

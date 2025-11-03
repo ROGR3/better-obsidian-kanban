@@ -1,7 +1,7 @@
 {
-  "name": "obsidian-kanban",
+  "name": "better-obsidian-kanban",
   "version": "2.0.51",
-  "description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+  "description": "Create markdown-backed Kanban boards in Obsidian with enhanced features",
   "main": "main.js",
   "scripts": {
     "typecheck": "tsc --noemit",
