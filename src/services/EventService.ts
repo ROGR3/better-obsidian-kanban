@@ -23,6 +23,21 @@ export class EventService implements IEventService {
     // Mark that listeners have been attached
     container.dataset.listenersAttached = 'true';
 
+    // Handle column header toggle (both regular and archived columns)
+    this.addEventHandler(container, 'click', (e: Event) => {
+      const target = (e.target as HTMLElement);
+      
+      // Check if clicking on a toggleable header (regular columns or archived)
+      const toggleableHeader = target.closest('.toggleable-header, .archived-column-header');
+      
+      // Don't toggle if clicking on the context menu area
+      if (toggleableHeader && !target.closest('.column-footer-hint')) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.toggleColumn(toggleableHeader as HTMLElement);
+      }
+    });
+
     // Handle column right-click context menus (only when not clicking on items)
     this.addEventHandler(container, 'contextmenu', (e: Event) => {
       const target = (e.target as HTMLElement);
@@ -97,5 +112,18 @@ export class EventService implements IEventService {
   private addEventHandler(container: HTMLElement, eventType: string, handler: EventListener): void {
     container.addEventListener(eventType, handler);
     this.eventHandlers.set(eventType, handler);
+  }
+
+  private toggleColumn(header: HTMLElement): void {
+    const column = header.closest('.simple-kanban-column');
+    if (!column) return;
+
+    const isCollapsed = column.classList.contains('collapsed');
+    
+    if (isCollapsed) {
+      column.classList.remove('collapsed');
+    } else {
+      column.classList.add('collapsed');
+    }
   }
 }

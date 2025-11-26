@@ -37,7 +37,9 @@ export class MarkdownKanbanView extends ItemView {
     
     this.contextMenuService = new ContextMenuService(
       (action: ContextAction, id?: string, columnId?: string) => 
-        this.handleContextAction(action, id, columnId)
+        this.handleContextAction(action, id, columnId),
+      (type: 'card' | 'initiative', id: string) => 
+        this.getItemArchiveStatus(type, id)
     );
 
     this.eventService = new EventService(
@@ -47,6 +49,16 @@ export class MarkdownKanbanView extends ItemView {
       (type: ItemType, id: string, event: MouseEvent) => this.handleItemRightClick(type, id, event),
       (header: HTMLElement) => this.toggleSwimlane(header)
     );
+  }
+
+  private getItemArchiveStatus(type: 'card' | 'initiative', id: string): boolean {
+    if (type === 'card') {
+      const card = this.boardManager.getCards().get(id);
+      return card?.metadata.archived || false;
+    } else {
+      const initiative = this.boardManager.getInitiatives().get(id);
+      return initiative?.metadata.archived || false;
+    }
   }
 
   getViewType(): string {
@@ -304,6 +316,18 @@ export class MarkdownKanbanView extends ItemView {
       case 'archive-initiative':
         if (id) {
           await this.boardManager.archiveInitiative(id);
+            this.refreshBoardContent();
+        }
+        break;
+      case 'unarchive-card':
+        if (id) {
+          await this.boardManager.unarchiveCard(id);
+            this.refreshBoardContent();
+        }
+        break;
+      case 'unarchive-initiative':
+        if (id) {
+          await this.boardManager.unarchiveInitiative(id);
             this.refreshBoardContent();
         }
         break;

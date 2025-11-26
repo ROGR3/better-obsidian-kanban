@@ -119,6 +119,7 @@ export class BoardManager implements IBoardManager {
           predecessors: card.metadata.predecessors,
           successors: card.metadata.successors,
           tags: card.metadata.tags || [],
+          archived: card.metadata.archived || false,
           history: card.metadata.history || []
         });
       });
@@ -133,7 +134,8 @@ export class BoardManager implements IBoardManager {
           date: initiative.metadata.date,
           type: 'initiative',
           description: initiative.metadata.description,
-          tags: initiative.metadata.tags || []
+          tags: initiative.metadata.tags || [],
+          archived: initiative.metadata.archived || false
         });
       });
 

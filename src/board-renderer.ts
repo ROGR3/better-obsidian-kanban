@@ -19,6 +19,10 @@ export class BoardRenderer implements IBoardRenderer {
       return;
     }
 
+    // Count archived items
+    const archivedInitiatives = Array.from(initiatives.values()).filter(i => i.metadata.archived);
+    const archivedCards = Array.from(cards.values()).filter(c => c.metadata.archived);
+
     // Columns are rendered within each swimlane
     container.innerHTML = `
       <div class="better-kanban-board simple-kanban">
@@ -28,7 +32,7 @@ export class BoardRenderer implements IBoardRenderer {
               <div class="swimlane-title">
                 <span class="swimlane-icon">📋</span>
                 <h3>Initiatives</h3>
-                <span class="swimlane-count">${initiatives.size}</span>
+                <span class="swimlane-count">${initiatives.size - archivedInitiatives.length}</span>
               </div>
               <button class="swimlane-toggle" data-swimlane="initiatives">▼</button>
             </div>
@@ -38,6 +42,7 @@ export class BoardRenderer implements IBoardRenderer {
                   .sort((a, b) => a.order - b.order)
                   .map(column => this.renderInitiativeColumn(column, initiatives))
                   .join('')}
+                ${this.renderArchivedInitiativeColumn(initiatives)}
               </div>
             </div>
           </div>
@@ -47,7 +52,7 @@ export class BoardRenderer implements IBoardRenderer {
               <div class="swimlane-title">
                 <span class="swimlane-icon">📝</span>
                 <h3>Tasks</h3>
-                <span class="swimlane-count">${cards.size}</span>
+                <span class="swimlane-count">${cards.size - archivedCards.length}</span>
               </div>
               <button class="swimlane-toggle" data-swimlane="tasks">▼</button>
             </div>
@@ -57,6 +62,7 @@ export class BoardRenderer implements IBoardRenderer {
                   .sort((a, b) => a.order - b.order)
                   .map(column => this.renderTaskColumn(column, cards))
                   .join('')}
+                ${this.renderArchivedTaskColumn(cards)}
               </div>
             </div>
           </div>
@@ -92,8 +98,8 @@ export class BoardRenderer implements IBoardRenderer {
       .join('');
 
     return `
-      <div class="simple-kanban-column" data-column-id="${column.id}">
-        <div class="simple-kanban-column-header">
+      <div class="simple-kanban-column toggleable-column" data-column-id="${column.id}">
+        <div class="simple-kanban-column-header toggleable-header">
           <h3>${column.title}</h3>
           <span class="column-count">${initiativesInColumn.length}</span>
         </div>
@@ -117,8 +123,8 @@ export class BoardRenderer implements IBoardRenderer {
       .join('');
 
     return `
-      <div class="simple-kanban-column" data-column-id="${column.id}">
-        <div class="simple-kanban-column-header">
+      <div class="simple-kanban-column toggleable-column" data-column-id="${column.id}">
+        <div class="simple-kanban-column-header toggleable-header">
           <h3>${column.title}</h3>
           <span class="column-count">${cardsInColumn.length}</span>
         </div>
@@ -127,6 +133,48 @@ export class BoardRenderer implements IBoardRenderer {
         </div>
         <div class="simple-kanban-column-footer">
           <div class="column-footer-hint">Right-click to add items</div>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderArchivedTaskColumn(cards: Map<string, Card>): string {
+    const archivedCards = Array.from(cards.values())
+      .filter(card => card.metadata.archived);
+
+    const cardsHtml = archivedCards
+      .map(card => this.renderCard(card, cards))
+      .join('');
+
+    return `
+      <div class="simple-kanban-column archived-column collapsed" data-column-id="archived">
+        <div class="simple-kanban-column-header archived-column-header" data-type="tasks">
+          <h3>📦 Archived</h3>
+          <span class="column-count">${archivedCards.length}</span>
+        </div>
+        <div class="simple-kanban-column-content archived-column-content">
+          ${cardsHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  private renderArchivedInitiativeColumn(initiatives: Map<string, Initiative>): string {
+    const archivedInitiatives = Array.from(initiatives.values())
+      .filter(initiative => initiative.metadata.archived);
+
+    const initiativesHtml = archivedInitiatives
+      .map(initiative => this.renderInitiative(initiative))
+      .join('');
+
+    return `
+      <div class="simple-kanban-column archived-column collapsed" data-column-id="archived">
+        <div class="simple-kanban-column-header archived-column-header" data-type="initiatives">
+          <h3>📦 Archived</h3>
+          <span class="column-count">${archivedInitiatives.length}</span>
+        </div>
+        <div class="simple-kanban-column-content archived-column-content">
+          ${initiativesHtml}
         </div>
       </div>
     `;

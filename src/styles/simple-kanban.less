@@ -242,6 +242,148 @@
       transform: scale(1.02);
     }
 
+    // Toggleable column styles (for all columns)
+    &.toggleable-column.collapsed {
+      min-width: 80px;
+      max-width: 80px;
+
+      .simple-kanban-column-content,
+      .simple-kanban-column-footer {
+        display: none;
+      }
+
+      .simple-kanban-column-header {
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        padding: 1rem 0.5rem;
+        flex-direction: column;
+        gap: 1rem;
+
+        h3 {
+          writing-mode: vertical-rl;
+          text-orientation: mixed;
+          white-space: nowrap;
+        }
+
+        .column-count {
+          margin-top: 0.5rem;
+        }
+      }
+    }
+
+    .toggleable-header {
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: var(--background-secondary);
+      }
+
+      h3 {
+        transition: color 0.2s ease;
+      }
+
+      &:hover h3 {
+        color: var(--interactive-accent);
+      }
+    }
+
+    // Archived column styles
+    &.archived-column {
+      min-width: 80px;
+      max-width: 80px;
+      background: var(--background-secondary);
+      border: 2px dashed var(--background-modifier-border);
+      opacity: 0.8;
+
+      &:hover {
+        opacity: 1;
+        border-color: var(--text-muted);
+      }
+
+      &.collapsed {
+        max-width: 80px;
+        min-width: 80px;
+
+        .archived-column-content {
+          display: none;
+        }
+
+        .simple-kanban-column-header {
+          writing-mode: vertical-rl;
+          text-orientation: mixed;
+          padding: 1rem 0.5rem;
+          flex-direction: column;
+          gap: 1rem;
+
+          h3 {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            white-space: nowrap;
+          }
+
+          .column-count {
+            margin-top: 0.5rem;
+          }
+        }
+      }
+
+      &:not(.collapsed) {
+        min-width: 300px;
+        max-width: 350px;
+
+        .archived-column-content {
+          display: flex;
+        }
+
+        .simple-kanban-column-header {
+          writing-mode: horizontal-tb;
+          padding: 0.75rem 1rem;
+          flex-direction: row;
+          gap: 0.5rem;
+
+          h3 {
+            writing-mode: horizontal-tb;
+          }
+        }
+      }
+
+      .archived-column-header {
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: linear-gradient(
+          135deg,
+          var(--background-secondary) 0%,
+          var(--background-primary) 100%
+        );
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: linear-gradient(
+            135deg,
+            var(--background-primary) 0%,
+            var(--background-secondary) 100%
+          );
+        }
+
+        h3 {
+          margin: 0;
+          font-size: 0.95rem;
+          font-weight: 700;
+          color: var(--text-muted);
+          transition: color 0.2s ease;
+        }
+
+        &:hover h3 {
+          color: var(--text-normal);
+        }
+      }
+    }
+
     .simple-kanban-column-header {
       padding: 0.75rem 1rem;
       border-bottom: 1px solid var(--background-modifier-border);

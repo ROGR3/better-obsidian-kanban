@@ -92,6 +92,8 @@ export type ContextAction =
   | 'delete-initiative' 
   | 'archive-card' 
   | 'archive-initiative' 
+  | 'unarchive-card' 
+  | 'unarchive-initiative' 
   | 'add-card' 
   | 'add-initiative' 
   | 'move-card' 

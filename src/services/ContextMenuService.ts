@@ -3,9 +3,14 @@ import { IContextMenuService, ContextMenuData, ContextAction } from '../types';
 export class ContextMenuService implements IContextMenuService {
   private contextMenu: HTMLElement | null = null;
   private onAction: (action: ContextAction, id?: string, columnId?: string) => Promise<void>;
+  private getItemArchiveStatus: ((type: 'card' | 'initiative', id: string) => boolean) | null = null;
 
-  constructor(onAction: (action: ContextAction, id?: string, columnId?: string) => Promise<void>) {
+  constructor(
+    onAction: (action: ContextAction, id?: string, columnId?: string) => Promise<void>,
+    getItemArchiveStatus?: (type: 'card' | 'initiative', id: string) => boolean
+  ) {
     this.onAction = onAction;
+    this.getItemArchiveStatus = getItemArchiveStatus || null;
   }
 
   show(event: MouseEvent, data: ContextMenuData): void {
@@ -90,6 +95,18 @@ export class ContextMenuService implements IContextMenuService {
   }
 
   private generateCardMenuItems(cardId: string): string {
+    const isArchived = this.getItemArchiveStatus ? this.getItemArchiveStatus('card', cardId) : false;
+
+    const archiveAction = isArchived
+      ? `<div class="context-menu-item" data-action="unarchive-card" data-id="${cardId}">
+           <span class="context-menu-icon">📤</span>
+           Unarchive Task
+         </div>`
+      : `<div class="context-menu-item" data-action="archive-card" data-id="${cardId}">
+           <span class="context-menu-icon">📦</span>
+           Archive Task
+         </div>`;
+
     return `
       <div class="context-menu-item" data-action="edit-card" data-id="${cardId}">
         <span class="context-menu-icon">✏️</span>
@@ -99,10 +116,7 @@ export class ContextMenuService implements IContextMenuService {
         <span class="context-menu-icon">↔️</span>
         Move Task
       </div>
-      <div class="context-menu-item" data-action="archive-card" data-id="${cardId}">
-        <span class="context-menu-icon">📦</span>
-        Archive Task
-      </div>
+      ${archiveAction}
       <div class="context-menu-item danger" data-action="delete-card" data-id="${cardId}">
         <span class="context-menu-icon">🗑️</span>
         Delete Task
@@ -111,6 +125,18 @@ export class ContextMenuService implements IContextMenuService {
   }
 
   private generateInitiativeMenuItems(initiativeId: string): string {
+    const isArchived = this.getItemArchiveStatus ? this.getItemArchiveStatus('initiative', initiativeId) : false;
+
+    const archiveAction = isArchived
+      ? `<div class="context-menu-item" data-action="unarchive-initiative" data-id="${initiativeId}">
+           <span class="context-menu-icon">📤</span>
+           Unarchive Initiative
+         </div>`
+      : `<div class="context-menu-item" data-action="archive-initiative" data-id="${initiativeId}">
+           <span class="context-menu-icon">📦</span>
+           Archive Initiative
+         </div>`;
+
     return `
       <div class="context-menu-item" data-action="edit-initiative" data-id="${initiativeId}">
         <span class="context-menu-icon">✏️</span>
@@ -120,10 +146,7 @@ export class ContextMenuService implements IContextMenuService {
         <span class="context-menu-icon">↔️</span>
         Move Initiative
       </div>
-      <div class="context-menu-item" data-action="archive-initiative" data-id="${initiativeId}">
-        <span class="context-menu-icon">📦</span>
-        Archive Initiative
-      </div>
+      ${archiveAction}
       <div class="context-menu-item danger" data-action="delete-initiative" data-id="${initiativeId}">
         <span class="context-menu-icon">🗑️</span>
         Delete Initiative
