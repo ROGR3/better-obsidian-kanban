@@ -434,9 +434,9 @@ export class MarkdownKanbanView extends ItemView {
 
       // Create new drag drop handler with targeted updates (no full refresh)
       this.dragDropHandler = new DragDropHandler(
-        (cardId: string, newColumnId: string) => 
+        (cardId: string, newColumnId: string, sourceColumnId: string) => 
           this.boardManager.moveCardToColumn(cardId, newColumnId),
-        (initiativeId: string, newColumnId: string) => 
+        (initiativeId: string, newColumnId: string, sourceColumnId: string) => 
           this.boardManager.moveInitiativeToColumn(initiativeId, newColumnId)
       );
 

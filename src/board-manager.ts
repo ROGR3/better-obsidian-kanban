@@ -434,8 +434,20 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
     const card = this.cards.get(cardId);
     if (!card) return;
 
-    // Update history when moving cards
-    HistoryService.updateCardHistory(card, newColumnId);
+    // Handle archiving/unarchiving
+    if (newColumnId === 'archived') {
+      card.metadata.archived = true;
+      // Keep the current status, don't change it when archiving
+    } else {
+      // Moving to a regular column
+      if (card.metadata.archived) {
+        // Unarchiving the card
+        card.metadata.archived = false;
+      }
+      // Update history when moving cards
+      HistoryService.updateCardHistory(card, newColumnId);
+    }
+    
     await this.saveBoardToFile();
   }
 
@@ -443,7 +455,19 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
     const initiative = this.initiatives.get(initiativeId);
     if (!initiative) return;
 
-    initiative.metadata.status = newColumnId;
+    // Handle archiving/unarchiving
+    if (newColumnId === 'archived') {
+      initiative.metadata.archived = true;
+      // Keep the current status, don't change it when archiving
+    } else {
+      // Moving to a regular column
+      if (initiative.metadata.archived) {
+        // Unarchiving the initiative
+        initiative.metadata.archived = false;
+      }
+      initiative.metadata.status = newColumnId;
+    }
+    
     await this.saveBoardToFile();
   }
 
