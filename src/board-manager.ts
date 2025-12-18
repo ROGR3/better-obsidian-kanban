@@ -60,6 +60,7 @@ export class BoardManager implements IBoardManager {
                 date: item.date,
                 tags: item.tags || [],
                 archived: item.archived || false,
+                wontdo: item.wontdo || false,
                 history: item.history || []
               }
             };
@@ -80,7 +81,8 @@ export class BoardManager implements IBoardManager {
                 description: item.description || '',
                 date: item.date,
                 tags: item.tags || [],
-                archived: item.archived || false
+                archived: item.archived || false,
+                wontdo: item.wontdo || false
               }
             });
           }
@@ -120,6 +122,7 @@ export class BoardManager implements IBoardManager {
           successors: card.metadata.successors,
           tags: card.metadata.tags || [],
           archived: card.metadata.archived || false,
+          wontdo: card.metadata.wontdo || false,
           history: card.metadata.history || []
         });
       });
@@ -135,7 +138,8 @@ export class BoardManager implements IBoardManager {
           type: 'initiative',
           description: initiative.metadata.description,
           tags: initiative.metadata.tags || [],
-          archived: initiative.metadata.archived || false
+          archived: initiative.metadata.archived || false,
+          wontdo: initiative.metadata.wontdo || false
         });
       });
 
@@ -217,6 +221,7 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
         date: new Date().toISOString().split('T')[0],
         tags: cardData.tags,
         archived: false,
+        wontdo: false,
         history: []
       }
     };
@@ -246,7 +251,8 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
         description: initiativeData.description,
         date: new Date().toISOString().split('T')[0],
         tags: initiativeData.tags,
-        archived: false
+        archived: false,
+        wontdo: false
       }
     };
 
@@ -434,15 +440,24 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
     const card = this.cards.get(cardId);
     if (!card) return;
 
-    // Handle archiving/unarchiving
+    // Handle special columns
     if (newColumnId === 'archived') {
       card.metadata.archived = true;
+      card.metadata.wontdo = false;
       // Keep the current status, don't change it when archiving
+    } else if (newColumnId === 'wontdo') {
+      card.metadata.wontdo = true;
+      card.metadata.archived = false;
+      // Keep the current status, don't change it when marking as won't do
     } else {
       // Moving to a regular column
       if (card.metadata.archived) {
         // Unarchiving the card
         card.metadata.archived = false;
+      }
+      if (card.metadata.wontdo) {
+        // Moving from won't do to active
+        card.metadata.wontdo = false;
       }
       // Update history when moving cards
       HistoryService.updateCardHistory(card, newColumnId);
@@ -455,15 +470,24 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
     const initiative = this.initiatives.get(initiativeId);
     if (!initiative) return;
 
-    // Handle archiving/unarchiving
+    // Handle special columns
     if (newColumnId === 'archived') {
       initiative.metadata.archived = true;
+      initiative.metadata.wontdo = false;
       // Keep the current status, don't change it when archiving
+    } else if (newColumnId === 'wontdo') {
+      initiative.metadata.wontdo = true;
+      initiative.metadata.archived = false;
+      // Keep the current status, don't change it when marking as won't do
     } else {
       // Moving to a regular column
       if (initiative.metadata.archived) {
         // Unarchiving the initiative
         initiative.metadata.archived = false;
+      }
+      if (initiative.metadata.wontdo) {
+        // Moving from won't do to active
+        initiative.metadata.wontdo = false;
       }
       initiative.metadata.status = newColumnId;
     }

@@ -48,6 +48,7 @@ export interface CardMetadata {
   date: string;
   tags: string[];
   archived: boolean;
+  wontdo: boolean;
   history: StatusHistoryEntry[];
 }
 
@@ -58,6 +59,7 @@ export interface InitiativeMetadata {
   date: string;
   tags: string[];
   archived: boolean;
+  wontdo: boolean;
 }
 
 // Core item interfaces

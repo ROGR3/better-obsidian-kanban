@@ -23,12 +23,12 @@ export class EventService implements IEventService {
     // Mark that listeners have been attached
     container.dataset.listenersAttached = 'true';
 
-    // Handle column header toggle (both regular and archived columns)
+    // Handle column header toggle (regular, archived, and wontdo columns)
     this.addEventHandler(container, 'click', (e: Event) => {
       const target = (e.target as HTMLElement);
       
-      // Check if clicking on a toggleable header (regular columns or archived)
-      const toggleableHeader = target.closest('.toggleable-header, .archived-column-header');
+      // Check if clicking on a toggleable header (regular columns, archived, or wontdo)
+      const toggleableHeader = target.closest('.toggleable-header, .archived-column-header, .wontdo-column-header');
       
       // Don't toggle if clicking on the context menu area
       if (toggleableHeader && !target.closest('.column-footer-hint')) {

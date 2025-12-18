@@ -19,9 +19,11 @@ export class BoardRenderer implements IBoardRenderer {
       return;
     }
 
-    // Count archived items
+    // Count special column items
     const archivedInitiatives = Array.from(initiatives.values()).filter(i => i.metadata.archived);
     const archivedCards = Array.from(cards.values()).filter(c => c.metadata.archived);
+    const wontdoInitiatives = Array.from(initiatives.values()).filter(i => i.metadata.wontdo);
+    const wontdoCards = Array.from(cards.values()).filter(c => c.metadata.wontdo);
 
     // Columns are rendered within each swimlane
     container.innerHTML = `
@@ -32,7 +34,7 @@ export class BoardRenderer implements IBoardRenderer {
               <div class="swimlane-title">
                 <span class="swimlane-icon">📋</span>
                 <h3>Initiatives</h3>
-                <span class="swimlane-count">${initiatives.size - archivedInitiatives.length}</span>
+                <span class="swimlane-count">${initiatives.size - archivedInitiatives.length - wontdoInitiatives.length}</span>
               </div>
               <button class="swimlane-toggle" data-swimlane="initiatives">▼</button>
             </div>
@@ -43,6 +45,7 @@ export class BoardRenderer implements IBoardRenderer {
                   .map(column => this.renderInitiativeColumn(column, initiatives))
                   .join('')}
                 ${this.renderArchivedInitiativeColumn(initiatives)}
+                ${this.renderWontdoInitiativeColumn(initiatives)}
               </div>
             </div>
           </div>
@@ -52,7 +55,7 @@ export class BoardRenderer implements IBoardRenderer {
               <div class="swimlane-title">
                 <span class="swimlane-icon">📝</span>
                 <h3>Tasks</h3>
-                <span class="swimlane-count">${cards.size - archivedCards.length}</span>
+                <span class="swimlane-count">${cards.size - archivedCards.length - wontdoCards.length}</span>
               </div>
               <button class="swimlane-toggle" data-swimlane="tasks">▼</button>
             </div>
@@ -63,6 +66,7 @@ export class BoardRenderer implements IBoardRenderer {
                   .map(column => this.renderTaskColumn(column, cards))
                   .join('')}
                 ${this.renderArchivedTaskColumn(cards)}
+                ${this.renderWontdoTaskColumn(cards)}
               </div>
             </div>
           </div>
@@ -90,7 +94,7 @@ export class BoardRenderer implements IBoardRenderer {
 
   private renderInitiativeColumn(column: BoardColumn, initiatives: Map<string, Initiative>): string {
     const initiativesInColumn = Array.from(initiatives.values())
-      .filter(initiative => this.normalizeStatus(initiative.metadata.status) === column.id && !initiative.metadata.archived);
+      .filter(initiative => this.normalizeStatus(initiative.metadata.status) === column.id && !initiative.metadata.archived && !initiative.metadata.wontdo);
 
 
     const initiativesHtml = initiativesInColumn
@@ -115,7 +119,7 @@ export class BoardRenderer implements IBoardRenderer {
 
   private renderTaskColumn(column: BoardColumn, cards: Map<string, Card>): string {
     const cardsInColumn = Array.from(cards.values())
-      .filter(card => this.normalizeStatus(card.metadata.status) === column.id && !card.metadata.archived);
+      .filter(card => this.normalizeStatus(card.metadata.status) === column.id && !card.metadata.archived && !card.metadata.wontdo);
 
 
     const cardsHtml = cardsInColumn
@@ -175,6 +179,48 @@ export class BoardRenderer implements IBoardRenderer {
         </div>
         <div class="simple-kanban-column-content archived-column-content">
           ${initiativesHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  private renderWontdoInitiativeColumn(initiatives: Map<string, Initiative>): string {
+    const wontdoInitiatives = Array.from(initiatives.values())
+      .filter(initiative => initiative.metadata.wontdo);
+
+    const initiativesHtml = wontdoInitiatives
+      .map(initiative => this.renderInitiative(initiative))
+      .join('');
+
+    return `
+      <div class="simple-kanban-column wontdo-column collapsed" data-column-id="wontdo">
+        <div class="simple-kanban-column-header wontdo-column-header" data-type="initiatives">
+          <h3>🚫 Won't Do</h3>
+          <span class="column-count">${wontdoInitiatives.length}</span>
+        </div>
+        <div class="simple-kanban-column-content wontdo-column-content">
+          ${initiativesHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  private renderWontdoTaskColumn(cards: Map<string, Card>): string {
+    const wontdoCards = Array.from(cards.values())
+      .filter(card => card.metadata.wontdo);
+
+    const cardsHtml = wontdoCards
+      .map(card => this.renderCard(card, cards))
+      .join('');
+
+    return `
+      <div class="simple-kanban-column wontdo-column collapsed" data-column-id="wontdo">
+        <div class="simple-kanban-column-header wontdo-column-header" data-type="tasks">
+          <h3>🚫 Won't Do</h3>
+          <span class="column-count">${wontdoCards.length}</span>
+        </div>
+        <div class="simple-kanban-column-content wontdo-column-content">
+          ${cardsHtml}
         </div>
       </div>
     `;
