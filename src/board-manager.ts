@@ -160,15 +160,19 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
   }
 
   async addCardToColumn(columnId: string): Promise<void> {
-    const availableCards = Array.from(this.cards.values()).map(card => ({
-      id: card.id,
-      title: card.metadata.title
-    }));
+    const availableCards = Array.from(this.cards.values())
+      .filter(card => !card.metadata.archived && !card.metadata.wontdo)
+      .map(card => ({
+        id: card.id,
+        title: card.metadata.title
+      }));
 
-    const availableInitiatives = Array.from(this.initiatives.values()).map(initiative => ({
-      id: initiative.id,
-      title: initiative.metadata.title
-    }));
+    const availableInitiatives = Array.from(this.initiatives.values())
+      .filter(initiative => !initiative.metadata.archived && !initiative.metadata.wontdo)
+      .map(initiative => ({
+        id: initiative.id,
+        title: initiative.metadata.title
+      }));
 
     const cardData = await ModalManager.showCardModal('Add Card', {
       title: '',
@@ -265,16 +269,18 @@ settings: ${JSON.stringify(this.boardData?.settings || {})}
     if (!card) return;
 
     const availableCards = Array.from(this.cards.values())
-      .filter(c => c.id !== cardId) // Exclude current card from available cards
+      .filter(c => c.id !== cardId && !c.metadata.archived && !c.metadata.wontdo) // Exclude current card, archived cards, and won't do cards
       .map(card => ({
         id: card.id,
         title: card.metadata.title
       }));
 
-    const availableInitiatives = Array.from(this.initiatives.values()).map(initiative => ({
-      id: initiative.id,
-      title: initiative.metadata.title
-    }));
+    const availableInitiatives = Array.from(this.initiatives.values())
+      .filter(initiative => !initiative.metadata.archived && !initiative.metadata.wontdo)
+      .map(initiative => ({
+        id: initiative.id,
+        title: initiative.metadata.title
+      }));
 
     const cardData = await ModalManager.showCardModal('Edit Card', {
       title: card.metadata.title,
